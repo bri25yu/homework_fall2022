@@ -1,4 +1,4 @@
-from typing import Union
+from typing import List, Union
 
 import torch
 from torch import nn
@@ -47,7 +47,23 @@ def build_mlp(
 
     # TODO: return a MLP. This should be an instance of nn.Module
     # Note: nn.Sequential is an instance of nn.Module.
-    raise NotImplementedError
+    layers: List[nn.Module] = []
+
+    # Add our input layer and activation
+    layers.append(nn.Linear(input_size, size))
+    layers.append(activation)
+
+    # Add our intermediate layers and activations
+    for _ in range(n_layers):
+        layers.append(nn.Linear(size, size))
+        layers.append(activation)
+
+    # Add our output layer and activation
+    layers.append(nn.Linear(size, output_size))
+    layers.append(output_activation)
+
+    # Convert into a nn.Sequential container
+    return nn.Sequential(*layers)
 
 
 device = None
