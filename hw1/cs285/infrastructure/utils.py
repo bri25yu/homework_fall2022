@@ -60,8 +60,11 @@ def sample_trajectories(env, policy, min_timesteps_per_batch, max_path_length, r
     timesteps_this_batch = 0
     paths = []
     while timesteps_this_batch < min_timesteps_per_batch:
+        path = sample_trajectory(env, policy, max_path_length, render)
+        timesteps_this_path = get_pathlength(path)
 
-        TODO
+        paths.append(path)
+        timesteps_this_batch += timesteps_this_path        
 
     return paths, timesteps_this_batch
 
@@ -74,7 +77,8 @@ def sample_n_trajectories(env, policy, ntraj, max_path_length, render=False):
     """
     paths = []
 
-    TODO
+    for _ in range(ntraj):
+        paths.append(sample_trajectory(env, policy, max_path_length, render))
 
     return paths
 
