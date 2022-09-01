@@ -166,7 +166,7 @@ class RL_Trainer(object):
                 # (2) collect `self.params['batch_size']` transitions
 
         if itr == 0:  # If we're in the first iteration
-            loaded_paths = np.load(load_initial_expertdata)
+            loaded_paths = np.load(load_initial_expertdata, allow_pickle=True)
             return loaded_paths, 0, None
 
         # TODO collect `batch_size` samples to be used for training
@@ -174,9 +174,9 @@ class RL_Trainer(object):
         # HINT2: you want each of these collected rollouts to be of length self.params['ep_len']
         print("\nCollecting data to be used for training...")
         env = self.env
-        batch_size = self.params['batch_size']
+        batch_size = self.params['train_batch_size']
         max_path_length = self.params['ep_len']
-        paths, envsteps_this_batch = utils.sample_n_trajectories(
+        paths, envsteps_this_batch = utils.sample_trajectories(
             env, collect_policy, batch_size, max_path_length, False
         )
 
