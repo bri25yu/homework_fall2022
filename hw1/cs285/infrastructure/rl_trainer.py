@@ -1,6 +1,7 @@
 from collections import OrderedDict
 import numpy as np
 import time
+from tqdm import trange
 
 import gym
 import torch
@@ -194,7 +195,7 @@ class RL_Trainer(object):
     def train_agent(self):
         print('\nTraining agent using sampled data from replay buffer...')
         all_logs = []
-        for train_step in range(self.params['num_agent_train_steps_per_iter']):
+        for train_step in trange(self.params['num_agent_train_steps_per_iter']):
 
             # TODO sample some data from the data buffer
             # HINT1: use the agent's sample function
