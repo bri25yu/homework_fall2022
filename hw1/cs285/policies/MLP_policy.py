@@ -113,8 +113,11 @@ class MLPPolicy(BasePolicy, nn.Module, metaclass=abc.ABCMeta):
 
 class MLPPolicySL(MLPPolicy):
     def __init__(self, ac_dim, ob_dim, n_layers, size, **kwargs):
+        loss_fn = kwargs.pop('loss')
+
         super().__init__(ac_dim, ob_dim, n_layers, size, **kwargs)
-        self.loss = nn.MSELoss()
+
+        self.loss = getattr(nn, loss_fn)
 
     def update(
             self, observations, actions,

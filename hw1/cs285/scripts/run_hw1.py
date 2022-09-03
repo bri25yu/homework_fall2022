@@ -19,7 +19,8 @@ class BC_Trainer(object):
             'size': params['size'],
             'learning_rate': params['learning_rate'],
             'max_replay_buffer_size': params['max_replay_buffer_size'],
-            }
+            'loss': params['loss'],
+        }
 
         self.params = params
         self.params['agent_class'] = BCAgent ## HW1: you will modify this
@@ -75,6 +76,7 @@ def main():
     parser.add_argument('--n_layers', type=int, default=2)  # depth, of policy to be learned
     parser.add_argument('--size', type=int, default=64)  # width of each layer, of policy to be learned
     parser.add_argument('--learning_rate', '-lr', type=float, default=5e-3)  # LR for supervised learning
+    parser.add_argument('--loss', type=str, default="mse")  # The loss function for training
 
     parser.add_argument('--video_log_freq', type=int, default=5)
     parser.add_argument('--scalar_log_freq', type=int, default=1)
