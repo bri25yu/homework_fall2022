@@ -117,7 +117,7 @@ class MLPPolicySL(MLPPolicy):
 
         super().__init__(ac_dim, ob_dim, n_layers, size, **kwargs)
 
-        self.loss = getattr(nn, loss_fn)
+        self.loss = getattr(nn, loss_fn)()
 
     def update(
             self, observations, actions,
