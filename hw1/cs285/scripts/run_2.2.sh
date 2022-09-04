@@ -3,6 +3,7 @@ python cs285/scripts/run_hw1.py \
     --expert_policy_file cs285/policies/experts/$exp_name.pkl \
     --env_name $exp_name-v4 \
     --exp_name bc_$exp_name \
+    --eval_batch_size 100000 \
     --n_iter 10 \
     --do_dagger \
     --expert_data cs285/expert_data/expert_data_$exp_name-v4.pkl \
@@ -14,6 +15,7 @@ python cs285/scripts/run_hw1.py \
     --expert_policy_file cs285/policies/experts/$exp_name.pkl \
     --env_name $exp_name-v4 \
     --exp_name bc_$exp_name \
+    --eval_batch_size 100000 \
     --n_iter 10 \
     --do_dagger \
     --num_agent_train_steps_per_iter 10000 \
@@ -28,6 +30,7 @@ python cs285/scripts/run_hw1.py \
     --expert_policy_file cs285/policies/experts/$exp_name.pkl \
     --env_name $exp_name-v4 \
     --exp_name bc_$exp_name \
+    --eval_batch_size 100000 \
     --n_iter 10 \
     --do_dagger \
     --num_agent_train_steps_per_iter 10000 \

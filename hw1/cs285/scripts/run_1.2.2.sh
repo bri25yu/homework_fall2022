@@ -3,6 +3,7 @@ python cs285/scripts/run_hw1.py \
     --expert_policy_file cs285/policies/experts/$exp_name.pkl \
     --env_name $exp_name-v4 \
     --exp_name bc_$exp_name \
+    --eval_batch_size 100000 \
     --expert_data cs285/expert_data/expert_data_$exp_name-v4.pkl \
     --video_log_freq -1
 
@@ -12,6 +13,7 @@ python cs285/scripts/run_hw1.py \
     --expert_policy_file cs285/policies/experts/$exp_name.pkl \
     --env_name $exp_name-v4 \
     --exp_name bc_$exp_name \
+    --eval_batch_size 100000 \
     --num_agent_train_steps_per_iter 10000 \
     -lr 2e-3 \
     --loss L1Loss \
@@ -24,6 +26,7 @@ python cs285/scripts/run_hw1.py \
     --expert_policy_file cs285/policies/experts/$exp_name.pkl \
     --env_name $exp_name-v4 \
     --exp_name bc_$exp_name \
+    --eval_batch_size 100000 \
     --num_agent_train_steps_per_iter 10000 \
     -lr 1e-3 \
     --loss L1Loss \
