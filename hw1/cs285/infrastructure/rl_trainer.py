@@ -175,7 +175,6 @@ class RL_Trainer(object):
         # HINT2: you want each of these collected rollouts to be of length self.params['ep_len']
         print("\nCollecting data to be used for training...")
         env = self.env
-        batch_size = self.params['train_batch_size']
         max_path_length = self.params['ep_len']
         paths, envsteps_this_batch = utils.sample_trajectories(
             env, collect_policy, batch_size, max_path_length, False

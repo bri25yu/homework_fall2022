@@ -5,6 +5,8 @@ from cs285.infrastructure.rl_trainer import RL_Trainer
 from cs285.agents.bc_agent import BCAgent
 from cs285.policies.loaded_gaussian_policy import LoadedGaussianPolicy
 from cs285.infrastructure.utils import MJ_ENV_KWARGS, MJ_ENV_NAMES
+from cs285.infrastructure.colab_utils import show_video
+
 
 class BC_Trainer(object):
 
@@ -120,6 +122,13 @@ def main():
 
     trainer = BC_Trainer(params)
     trainer.run_training_loop()
+
+    ###################
+    ### SHOW VIDEO
+    ###################
+
+    show_video()
+
 
 if __name__ == "__main__":
     main()
