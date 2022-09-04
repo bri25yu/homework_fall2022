@@ -1,5 +1,7 @@
 import numpy as np
 
+from tqdm import tqdm
+
 
 ############################################
 ############################################
@@ -16,6 +18,7 @@ def sample_trajectory(env, policy, max_path_length, render=False):
     # init vars
     obs, acs, rewards, next_obs, terminals, image_obs = [], [], [], [], [], []
     steps = 0
+    if render: pbar = tqdm(desc="Sampling trajectory", total=max_path_length)
     while True:
 
         # render image of the simulated env
@@ -43,6 +46,8 @@ def sample_trajectory(env, policy, max_path_length, render=False):
         # HINT: rollout can end due to done, or due to max_path_length
         rollout_done = done or (steps >= max_path_length) # HINT: this is either 0 or 1
         terminals.append(rollout_done)
+
+        if render: pbar.update()
 
         if rollout_done:
             break

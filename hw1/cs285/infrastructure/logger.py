@@ -27,25 +27,40 @@ class Logger:
         self._summ_writer.add_video('{}'.format(name), video_frames, step, fps=fps)
 
     def log_paths_as_videos(self, paths, step, max_videos_to_save=2, fps=10, video_title='video'):
+        # Keep only the number of videos we want to
+        max_videos_to_save = np.min([max_videos_to_save, len(paths)])
+        paths = paths[:max_videos_to_save]
 
-        # reshape the rollouts
+        # Reshape the rollouts into image frames
         videos = [np.transpose(p['image_obs'][:, 0], [0, 3, 1, 2]) for p in paths]
 
-        # max rollout length
-        max_videos_to_save = np.min([max_videos_to_save, len(videos)])
-        max_length = videos[0].shape[0]
-        for i in range(max_videos_to_save):
-            if videos[i].shape[0]>max_length:
-                max_length = videos[i].shape[0]
+        # Calculate max rollout length
+        max_length = max(map(len, videos))
 
-        # pad rollouts to all be same length
-        for i in range(max_videos_to_save):
-            if videos[i].shape[0]<max_length:
-                padding = np.tile([videos[i][-1]], (max_length-videos[i].shape[0],1,1,1))
-                videos[i] = np.concatenate([videos[i], padding], 0)
+        # Pad rollouts to all be same length
+        for i in range(len(videos)):
+            v = videos[i]
 
-        # log videos to tensorboard event file
-        videos = np.stack(videos[:max_videos_to_save], 0)
+            # If the video is already the max length, do nothing
+            if len(v) >= max_length:
+                continue
+
+            # We extend the video by repeating the last frame
+            last_frame = v[-1]
+
+            # Calculate the number of frames we need to pad to match the max video length
+            n_missing_frames = max_length - v.shape[0]
+
+            # Create the repeated video frames
+            padding = np.tile([last_frame], (n_missing_frames, 1, 1, 1))
+
+            # Concatenate the video and the repeated frames together
+            videos[i] = np.concatenate([v, padding], 0)
+
+        # Concatenate all videos together
+        videos = np.stack(videos, 0)
+
+        # Log videos to tensorboard event file
         self.log_video(videos, video_title, step, fps=fps)
 
     def log_figures(self, figure, name, step, phase):
