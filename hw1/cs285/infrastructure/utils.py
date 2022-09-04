@@ -1,5 +1,5 @@
 import numpy as np
-from cs285.infrastructure.colab_utils import wrap_env
+
 
 ############################################
 ############################################
@@ -9,9 +9,6 @@ MJ_ENV_KWARGS = {name: {"render_mode": "rgb_array"} for name in MJ_ENV_NAMES}
 MJ_ENV_KWARGS["Ant-v4"]["use_contact_forces"] = True
 
 def sample_trajectory(env, policy, max_path_length, render=False):
-
-    if render:
-        env = wrap_env(env)
 
     # initialize env for the beginning of a new rollout
     ob = env.reset() # HINT: should be the output of resetting the env
