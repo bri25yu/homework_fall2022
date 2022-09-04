@@ -11,10 +11,11 @@ python cs285/scripts/run_hw1.py \
     --expert_data cs285/expert_data/expert_data_$exp_name-v4.pkl \
     --video_log_freq -1
 
-# Best is 1471 at 2/1024/10000 over 1e-5, 2e-5, 3e-5 at 3e-5
+# Best is 1471 at 2/1024/10000/MSELoss over 1e-5, 2e-5, 3e-5 at 3e-5
+# Best is 1480 at 2/4096/10000/HuberLoss over 1e-5, 2e-5, 3e-5 at 3e-5
 exp_name="Hopper"
 n_layers=2
-size=4096
+size=1024
 python cs285/scripts/run_hw1.py \
     --expert_policy_file cs285/policies/experts/$exp_name.pkl \
     --env_name $exp_name-v4 \
@@ -23,19 +24,25 @@ python cs285/scripts/run_hw1.py \
     --n_layers $n_layers \
     --size $size \
     --num_agent_train_steps_per_iter 10000 \
-    -lr 2e-5 \
+    -lr 3e-5 \
     --expert_data cs285/expert_data/expert_data_$exp_name-v4.pkl \
     --video_log_freq -1
 
-# exp_name="Walker2d"
-# n_layers=2
-# size=64
-# python cs285/scripts/run_hw1.py \
-#     --expert_policy_file cs285/policies/experts/$exp_name.pkl \
-#     --env_name $exp_name-v4 \
-#     --exp_name bc_$exp_name \
-#     --n_iter 1 \
-#     --n_layers $n_layers \
-#     --size $size \
-#     --expert_data cs285/expert_data/expert_data_$exp_name-v4.pkl \
-#     --video_log_freq -1
+# Best is 314 at 2/1024/10000/MSELoss over 1e-5, 2e-5, 3e-5 at 3e-5
+exp_name="Walker2d"
+n_layers=2
+size=1024
+python cs285/scripts/run_hw1.py \
+    --expert_policy_file cs285/policies/experts/$exp_name.pkl \
+    --env_name $exp_name-v4 \
+    --exp_name bc_$exp_name \
+    --n_iter 1 \
+    --n_layers $n_layers \
+    --size $size \
+    --num_agent_train_steps_per_iter 10000 \
+    -lr 1e-5 \
+    --loss HuberLoss \
+    --batch_size 10000000 \
+    --train_batch_size 10000 \
+    --expert_data cs285/expert_data/expert_data_$exp_name-v4.pkl \
+    --video_log_freq -1
