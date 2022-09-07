@@ -18,7 +18,7 @@ do
         python cs285/scripts/run_hw1.py \
             --expert_policy_file cs285/policies/experts/$exp_name.pkl \
             --env_name $exp_name-v4 \
-            --exp_name bc_$exp_name_$loss_$learning_rate \
+            --exp_name bc_${exp_name}_${loss}_${learning_rate} \
             --eval_batch_size 100000 \
             --num_agent_train_steps_per_iter 10000 \
             -lr $learning_rate \
