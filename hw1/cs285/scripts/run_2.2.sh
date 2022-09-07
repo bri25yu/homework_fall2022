@@ -5,7 +5,7 @@ exp_name="HalfCheetah"
 python cs285/scripts/run_hw1.py \
     --expert_policy_file cs285/policies/experts/$exp_name.pkl \
     --env_name $exp_name-v4 \
-    --exp_name bc_$exp_name \
+    --exp_name q2_dagger_$exp_name \
     --eval_batch_size 100000 \
     --n_iter 10 \
     --do_dagger \
@@ -19,7 +19,7 @@ exp_name="Hopper"
 python cs285/scripts/run_hw1.py \
     --expert_policy_file cs285/policies/experts/$exp_name.pkl \
     --env_name $exp_name-v4 \
-    --exp_name bc_$exp_name \
+    --exp_name q2_dagger_$exp_name \
     --eval_batch_size 100000 \
     --n_iter 10 \
     --do_dagger \
@@ -37,7 +37,7 @@ exp_name="Walker2d"
 python cs285/scripts/run_hw1.py \
     --expert_policy_file cs285/policies/experts/$exp_name.pkl \
     --env_name $exp_name-v4 \
-    --exp_name bc_$exp_name \
+    --exp_name q2_dagger_$exp_name \
     --eval_batch_size 100000 \
     --n_iter 8 \
     --do_dagger \

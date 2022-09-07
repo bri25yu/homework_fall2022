@@ -4,7 +4,7 @@
 python cs285/scripts/run_hw1.py \
     --expert_policy_file cs285/policies/experts/Ant.pkl \
     --env_name Ant-v4 \
-    --exp_name bc_ant \
+    --exp_name q2_dagger_ant \
     --eval_batch_size 100000 \
     --n_iter 10 \
     --do_dagger \
