@@ -1,3 +1,5 @@
+# Homework 1 Report
+
 ### Question 1.2
 Every run uses an eval batch size of 100000 (averaging over at least 100 rollouts).
 
@@ -14,6 +16,7 @@ Every run uses an eval batch size of 100000 (averaging over at least 100 rollout
 |Hopper     |3772.670|1627.715      |324.464   |1e-3         |L1Loss |10000      |
 |Walker2d   |5566.846|4045.609      |1616.452  |3e-3         |L1Loss |10000      |
 
+<div style="page-break-after: always;"></div>
 
 ### Question 1.3
 We pick the Hopper environment where the expert has returns of 3772.670.
@@ -41,3 +44,19 @@ Every run uses an eval batch size of 100000 (averaging over at least 100 rollout
 
 
 ![](report_resources/q1_3.jpg)
+
+<div style="page-break-after: always;"></div>
+
+### Question 2.2
+
+Every run uses an eval batch size of 100000 (averaging over at least 100 rollouts).
+
+|Common parameters|Value|
+|-----------------|-----|
+|n_layers         |2    |
+|size             |64   |
+|train_batch_size |100  |
+|n_iter           |8    |
+
+
+![](report_resources/q2_2.jpg)
