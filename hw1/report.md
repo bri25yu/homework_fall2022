@@ -21,6 +21,10 @@ Every run uses an eval batch size of 100000 (averaging over at least 100 rollout
 ### Question 1.3
 We pick the Hopper environment where the expert has returns of 3772.670.
 
+We pick our hyperparameter of interest to be our loss function, specifically over the MSE (default), L1, and Huber losses. Originally I wanted to understand how the loss landscape affects the performance of our bc agent because the loss itself was always very small i.e. less than 0.001. I originally wanted to use more accurate loss functions in the sense that a loss value of 0.001 is already really small which typically indicates that a model is performing well on the task. However, I noticed that loss doesn't necessarily correlate with model performance i.e. similar losses produced by different hyperparameters had different eval returns.
+
+We further tune each loss function over three learning rates {1e-5, 2e-5, 3e-5}.
+
 Every run uses an eval batch size of 100000 (averaging over at least 100 rollouts).
 
 |Common parameters|Value|
@@ -48,15 +52,8 @@ Every run uses an eval batch size of 100000 (averaging over at least 100 rollout
 <div style="page-break-after: always;"></div>
 
 ### Question 2.2
+All envs use an `n_iter` value of 10.
 
-Every run uses an eval batch size of 100000 (averaging over at least 100 rollouts).
-
-|Common parameters|Value|
-|-----------------|-----|
-|n_layers         |2    |
-|size             |64   |
-|train_batch_size |100  |
-|n_iter           |8    |
-
+The other hyperparameters are the same as in Question 1.2. Please reference the table there.
 
 ![](report_resources/q2_2.jpg)
