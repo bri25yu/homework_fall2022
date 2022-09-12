@@ -1,4 +1,4 @@
-from typing import List, Tuple
+from typing import Any, Dict, List, Tuple
 
 import os
 from pathlib import Path
@@ -7,6 +7,10 @@ import tensorflow as tf
 tf.get_logger().setLevel("ERROR")
 
 from tensorflow.python.summary.summary_iterator import summary_iterator
+
+import matplotlib.pyplot as plt
+import pandas as pd
+import seaborn as sns
 
 
 run_logs_dir = os.path.join(*Path(__file__).parts[:-3], "run_logs")
@@ -57,6 +61,19 @@ def get_first_tag_simple_value(summaries: List, tag: str) -> float:
     return get_first_simple_value(filtered)
 
 
+def _get_experiment_stats(experiment_prefix: str) -> Dict[str, float]:
+    """
+    Returns (Eval_AverageReturn, Eval_StdReturn, Train_AverageReturn)
+    """
+    summaries = load_eventfile_by_folder_prefix(experiment_prefix)
+
+    return {
+        "Eval Average Return": get_first_tag_simple_value(summaries, "Eval_AverageReturn"),
+        "Eval Return Stddev": get_first_tag_simple_value(summaries, "Eval_StdReturn"),
+        "Expert Return": get_first_tag_simple_value(summaries, "Train_AverageReturn")
+    }
+
+
 def q1_2():
     experiments = {
         "Ant": "q1_bc_ant_Ant-v4",
@@ -66,22 +83,51 @@ def q1_2():
     }
 
     print("Results for question 1.2")
+    data: List[Dict[str, float]] = []
     for experiment_name, experiment_prefix in experiments.items():
-        summaries = load_eventfile_by_folder_prefix(experiment_prefix)
+        stats = _get_experiment_stats(experiment_prefix)
+        data.append({
+            "Experiment name": experiment_name,
+            **stats,
+        })
 
-        eval_average_return = get_first_tag_simple_value(summaries, "Eval_AverageReturn")
-        eval_std_return = get_first_tag_simple_value(summaries, "Eval_StdReturn")
-        train_average_return = get_first_tag_simple_value(summaries, "Train_AverageReturn")
-
-        print(experiment_name)
-        print(f"\tEval_AverageReturn: {eval_average_return:.3f}")
-        print(f"\tEval_StdReturn: {eval_std_return:.3f}")
-        print(f"\tTrain_AverageReturn: {train_average_return:.3f}")
+    df = pd.DataFrame(data)
+    print(df)
 
 
 def q1_3():
+    losses = ["Huber", "L1", "MSE"]
+    learning_rates = ["1e-3", "2e-3", "3e-3"]
+    prefix_template = "q1_bc_Hopper_{loss}Loss_{learning_rate}_Hopper-v4"
+
+    data: List[Dict[str, Any]] = []
+    for loss in losses:
+        for learning_rate in learning_rates:
+            experiment_prefix = prefix_template.format(loss=loss, learning_rate=learning_rate)
+            stats = _get_experiment_stats(experiment_prefix)
+            data.append({
+                "Loss": loss,
+                "Learning rate": learning_rate,
+                **stats,
+            })
+
+    df = pd.DataFrame(data)
+    print(df)
+
+    pivoted_df = df.pivot(index="Learning rate", columns="Loss", values="Eval Average Return")
+
+    fig, ax = plt.subplots(figsize=(10, 8))
+    sns.heatmap(pivoted_df, ax=ax, annot=True, fmt=".0f")
+
+    ax.set_title("Eval average return of hyperparameter tuning over learning rate and loss function")
+    fig.tight_layout()
+    fig.savefig("report_resources/q1_3.jpg")
+
+
+def q2_2():
     pass
 
 
 if __name__ == "__main__":
-    q1_2()
+    # q1_2()
+    q1_3()
