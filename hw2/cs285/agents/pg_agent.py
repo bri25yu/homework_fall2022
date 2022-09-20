@@ -148,7 +148,7 @@ class PGAgent(BaseAgent):
         if self.standardize_advantages:
             mean = np.mean(advantages)
             std = np.std(advantages)
-            advantages = (advantages - mean) / std
+            advantages = (advantages - mean) / (std + 1e-8)
 
         return advantages
 
