@@ -99,7 +99,7 @@ class MLPPolicy(BasePolicy, nn.Module, metaclass=abc.ABCMeta):
         obs_pt = ptu.from_numpy(observation)
 
         # Run our model
-        action_pt = self(obs_pt)
+        action_pt = self(obs_pt).sample()
 
         # Convert our output action into a form usable by downstream
         action = ptu.to_numpy(action_pt)
@@ -153,7 +153,21 @@ class MLPPolicyPG(MLPPolicy):
         # HINT2: you will want to use the `log_prob` method on the distribution returned
             # by the `forward` method
 
-        TODO
+        # Retrieve relevant objects from self
+        optimizer = self.optimizer
+
+        # Setup our optimizer for this train step
+        optimizer.zero_grad()
+
+        # Retrieve model output action distribution
+        model_action_distribution = self(observations)
+
+        # Calculate loss
+        loss = -model_action_distribution.log_prob(actions) * advantages
+
+        # Update parameters
+        loss.backward()
+        optimizer.step()
 
         if self.nn_baseline:
             ## TODO: update the neural network baseline using the q_values as
