@@ -163,7 +163,9 @@ class MLPPolicyPG(MLPPolicy):
         model_action_distribution = self(observations)
 
         # Calculate loss
-        loss = -model_action_distribution.log_prob(actions) * advantages
+        # From https://pytorch.org/docs/stable/distributions.html#
+        loss_by_sample = -model_action_distribution.log_prob(actions) * advantages
+        loss = loss_by_sample.sum()
 
         # Update parameters
         loss.backward()
@@ -177,7 +179,8 @@ class MLPPolicyPG(MLPPolicy):
             ## Note: You will need to convert the targets into a tensor using
                 ## ptu.from_numpy before using it in the loss
 
-            TODO
+            # TODO
+            pass
 
         train_log = {
             'Training Loss': ptu.to_numpy(loss),
