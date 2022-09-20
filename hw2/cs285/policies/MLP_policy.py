@@ -87,6 +87,25 @@ class MLPPolicy(BasePolicy, nn.Module, metaclass=abc.ABCMeta):
     # query the policy with observation(s) to get selected action(s)
     def get_action(self, obs: np.ndarray) -> np.ndarray:
         # TODO: get this from HW1
+        # TODO: The current implemention assumes an output action from
+        # the forward fn, but the staff implementation returns a distribution
+
+        if len(obs.shape) > 1:
+            observation = obs
+        else:
+            observation = obs[None]
+
+        # Convert our obs into a form usable by our model
+        obs_pt = ptu.from_numpy(observation)
+
+        # Run our model
+        action_pt = self(obs_pt)
+
+        # Convert our output action into a form usable by downstream
+        action = ptu.to_numpy(action_pt)
+
+        # TODO return the action that the policy prescribes
+        return action
 
     # update/train this policy
     def update(self, observations, actions, **kwargs):
