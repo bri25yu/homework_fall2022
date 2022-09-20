@@ -74,18 +74,21 @@ class PGAgent(BaseAgent):
         # trajectories and the second corresponds to timesteps, 
         # then flattened to a 1D numpy array.
 
+        return_fn = None
         if not self.reward_to_go:
-            q_values = []
-            for rewards in rewards_list:
-                q_values.append(self._discounted_return(rewards))
+            return_fn = self._discounted_return
 
         # Case 2: reward-to-go PG
         # Estimate Q^{pi}(s_t, a_t) by the discounted sum of rewards starting from t
         else:
-            q_values = []
-            for rewards in rewards_list:
-                q_values.append(self._discounted_cumsum(rewards))
+            return_fn = self._discounted_cumsum
 
+        q_values_list = []
+        for rewards in rewards_list:
+            return_value = return_fn(rewards)
+            q_values_list.append(return_value)
+
+        q_values = np.concatenate(q_values_list)
         q_values = np.array(q_values)
 
         return q_values
@@ -200,6 +203,6 @@ class PGAgent(BaseAgent):
 
         discount_matrix = gamma ** diff
 
-        discounted_cumsum = (discount_matrix @ rewards).sum()
+        discounted_cumsum = discount_matrix @ rewards
 
         return discounted_cumsum
