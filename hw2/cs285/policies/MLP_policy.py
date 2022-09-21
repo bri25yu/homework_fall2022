@@ -45,8 +45,9 @@ class MLPPolicy(BasePolicy, nn.Module, metaclass=abc.ABCMeta):
             self.logits_na.to(ptu.device)
             self.mean_net = None
             self.logstd = None
-            self.optimizer = optim.Adam(self.logits_na.parameters(),
-                                        self.learning_rate)
+            self.optimizer = optim.Adam(
+                self.logits_na.parameters(), self.learning_rate, maximize=True
+            )
         else:
             self.logits_na = None
             self.mean_net = ptu.build_mlp(input_size=self.ob_dim,
@@ -59,7 +60,8 @@ class MLPPolicy(BasePolicy, nn.Module, metaclass=abc.ABCMeta):
             self.logstd.to(ptu.device)
             self.optimizer = optim.Adam(
                 itertools.chain([self.logstd], self.mean_net.parameters()),
-                self.learning_rate
+                self.learning_rate,
+                maximize=True,
             )
 
         if nn_baseline:
@@ -163,8 +165,7 @@ class MLPPolicyPG(MLPPolicy):
         model_action_distribution = self(observations)
 
         # Calculate loss
-        # From https://pytorch.org/docs/stable/distributions.html#
-        loss_by_sample = -model_action_distribution.log_prob(actions) * advantages
+        loss_by_sample = model_action_distribution.log_prob(actions) * advantages
         loss = loss_by_sample.sum()
 
         # Update parameters

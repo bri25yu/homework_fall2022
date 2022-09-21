@@ -122,5 +122,41 @@ def q_5_1():
     fig.savefig("report_resources/q5_1.jpg")
 
 
+def q_5_2():
+    print("Creating results for exercise 5.2")
+
+    batch_sizes = [10000, 5000, 2500, 1000, 500, 250, 100]
+    learning_rates = [
+        "1e-4", "2e-4", "3e-4", "5e-4", "8e-4", "1e-3", "2e-3", "3e-3", "5e-3", "8e-3", "1e-2", "2e-2", "3e-2"
+    ]
+    prefix_template = "q2_pg_q2_b{batch_size}_r{learning_rate}"
+
+    data: List[Dict[str, Any]] = []
+    for batch_size in batch_sizes:
+        for learning_rate in learning_rates:
+            experiment_prefix = prefix_template.format(
+                batch_size=batch_size, learning_rate=learning_rate
+            )
+            _, returns = get_eval_averagereturns(experiment_prefix)
+
+            data.append({
+                "Batch size": batch_size,
+                "Learning rate": learning_rate,
+                "Eval Average Return": returns[-1],
+            })
+
+    df = pd.DataFrame(data)
+    print(df)
+
+    pivoted_df = df.pivot(index="Learning rate", columns="Batch size", values="Eval Average Return")
+
+    fig, ax = plt.subplots(figsize=(10, 8))
+    sns.heatmap(pivoted_df, ax=ax, annot=True, fmt=".0f")
+
+    ax.set_title("Eval average return of hyperparameter tuning over learning rate and loss function")
+    fig.tight_layout()
+    fig.savefig("report_resources/q1_3.jpg")
+
+
 if __name__ == "__main__":
     q_5_1()
