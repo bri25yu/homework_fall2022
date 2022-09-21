@@ -166,7 +166,7 @@ class MLPPolicyPG(MLPPolicy):
 
         # Calculate loss
         loss_by_sample = model_action_distribution.log_prob(actions) * advantages
-        loss = loss_by_sample.sum()
+        loss = loss_by_sample.mean()
 
         # Update parameters
         loss.backward()
