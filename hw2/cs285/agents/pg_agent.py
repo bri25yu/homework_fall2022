@@ -175,15 +175,15 @@ class PGAgent(BaseAgent):
         """
         gamma = self.gamma
 
-        discount_powers = np.arange(len(rewards))
-        discounts = gamma ** discount_powers
+        T = len(rewards)
 
-        discounted_rewards = rewards * discounts
+        discount_factors = gamma ** np.arange(T)
+        discounted_return = discount_factors @ rewards
 
-        discounted_sum = discounted_rewards.sum()
-        discounted_sum_reshaped = discounted_sum * np.ones_like(rewards)
+        # Reshape it into the correct form
+        discounted_return = discounted_return * np.ones_like(rewards)
 
-        return discounted_sum_reshaped
+        return discounted_return
 
     def _discounted_cumsum(self, rewards):
         """
@@ -194,15 +194,15 @@ class PGAgent(BaseAgent):
         gamma = self.gamma
 
         T = len(rewards)
-        idxs = np.arange(T).reshape((T, 1))
-        i_matrix = np.tile(idxs, (1, T))
-        j_matrix = i_matrix.T
 
-        diff = j_matrix - i_matrix
-        diff[diff < 0] = 0
+        # TODO there's probably a more efficient way of doing this
+        discount_factors = lambda t: gamma ** np.arange(T - t)
+        rewards_slice = lambda t: rewards[t: T]
+        cumsum_value = lambda t: discount_factors(t) @ rewards_slice(t)
 
-        discount_matrix = gamma ** diff
+        discounted_cumsum = np.array([cumsum_value(t) for t in range(T)])
 
-        discounted_cumsum = discount_matrix @ rewards
+        # reshape it correctly
+        discounted_cumsum = discounted_cumsum.reshape(rewards.shape)
 
         return discounted_cumsum
