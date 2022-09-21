@@ -196,9 +196,8 @@ class PGAgent(BaseAgent):
         T = len(rewards)
 
         # TODO there's probably a more efficient way of doing this
-        discount_factors = lambda t: gamma ** np.arange(T - t)
-        rewards_slice = lambda t: rewards[t: T]
-        cumsum_value = lambda t: discount_factors(t) @ rewards_slice(t)
+        discount_factors = gamma ** np.arange(T)
+        cumsum_value = lambda t: discount_factors[:T - t] @ rewards[t: T]
 
         discounted_cumsum = np.array([cumsum_value(t) for t in range(T)])
 
