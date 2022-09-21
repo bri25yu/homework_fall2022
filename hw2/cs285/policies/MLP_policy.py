@@ -164,9 +164,13 @@ class MLPPolicyPG(MLPPolicy):
         # Retrieve model output action distribution
         model_action_distribution = self(observations)
 
+        # Shift the advantages to be non positive
+        advantages_max = advantages.max()
+        advantages_nsd = advantages - advantages_max
+
         # Calculate loss
-        loss_by_sample = model_action_distribution.log_prob(actions) * advantages
-        loss = loss_by_sample.mean()
+        loss_by_sample = model_action_distribution.log_prob(actions) * advantages_nsd
+        loss = loss_by_sample.sum()
 
         # Update parameters
         loss.backward()
