@@ -196,8 +196,8 @@ class PGAgent(BaseAgent):
 
         T = len(rewards)
 
-        res = [rewards[T]]
-        for t_prime in range(T-1, -1, -1):
+        res = [rewards[T-1]]
+        for t_prime in range(T-2, -1, -1):
             res.append(res[-1] * gamma + rewards[t_prime])
 
         res = np.array(res)[::-1]
