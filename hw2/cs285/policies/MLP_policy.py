@@ -23,6 +23,7 @@ class MLPPolicy(BasePolicy, nn.Module, metaclass=abc.ABCMeta):
                  learning_rate=1e-4,
                  training=True,
                  nn_baseline=False,
+                 shift_advantages=False,
                  **kwargs
                  ):
         super().__init__(**kwargs)
@@ -36,6 +37,7 @@ class MLPPolicy(BasePolicy, nn.Module, metaclass=abc.ABCMeta):
         self.learning_rate = learning_rate
         self.training = training
         self.nn_baseline = nn_baseline
+        self.shift_advantages = shift_advantages
 
         if self.discrete:
             self.logits_na = ptu.build_mlp(input_size=self.ob_dim,
@@ -164,9 +166,10 @@ class MLPPolicyPG(MLPPolicy):
         # Retrieve model output action distribution
         model_action_distribution = self(observations)
 
-        # Shift the advantages to be non positive
-        advantages_max = advantages.max()
-        advantages_nsd = advantages - advantages_max
+        if self.shift_advantages:
+            # Shift the advantages to be non positive
+            advantages_max = advantages.max()
+            advantages_nsd = advantages - advantages_max
 
         # Calculate loss
         loss_by_sample = model_action_distribution.log_prob(actions) * advantages_nsd

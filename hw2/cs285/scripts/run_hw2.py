@@ -28,6 +28,8 @@ class PG_Trainer(object):
 
         train_args = {
             'num_agent_train_steps_per_iter': params['num_agent_train_steps_per_iter'],
+            'shift_advantages': params['shift_advantages'],
+            'normalize_by_timestep': params['normalize_by_timestep'],
         }
 
         agent_params = {**computation_graph_args, **estimate_advantage_args, **train_args}
@@ -64,6 +66,8 @@ def main():
     parser.add_argument('--nn_baseline', action='store_true')
     parser.add_argument('--gae_lambda', type=float, default=None)
     parser.add_argument('--dont_standardize_advantages', '-dsa', action='store_true')
+    parser.add_argument('--shift_advantages', action='store_true', help="For the case where we don't use reward-to-go, shift all the advantages to be non-positive to we always ensure a positive loss")
+    parser.add_argument('--normalize_by_timestep', action='store_true', help="For the case where do we use reward-to-go, divide each q-value by the number of time steps it covers")
     parser.add_argument('--batch_size', '-b', type=int, default=1000) #steps collected per train iteration
     parser.add_argument('--eval_batch_size', '-eb', type=int, default=400) #steps collected per eval iteration
     parser.add_argument('--train_batch_size', '-tb', type=int, default=1000) ##steps used per gradient step
