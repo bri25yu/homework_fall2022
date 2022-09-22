@@ -145,7 +145,7 @@ class MLPPolicyPG(MLPPolicy):
         super().__init__(ac_dim, ob_dim, n_layers, size, **kwargs)
         self.baseline_loss = nn.MSELoss()
 
-    def update(self, observations, actions, advantages, q_values=None):
+    def update(self, observations, actions, advantages, q_values=None, batch_size=1):
         observations = ptu.from_numpy(observations)
         actions = ptu.from_numpy(actions)
         advantages = ptu.from_numpy(advantages)
@@ -171,13 +171,9 @@ class MLPPolicyPG(MLPPolicy):
             advantages_max = advantages.max()
             advantages_nsd = advantages - advantages_max
 
-            # Scale the advantages so that the most negative advantage is -1
-            advantages_min = advantages_nsd.min()
-            advantages_nsd = advantages_nsd / (-advantages_min)
-
         # Calculate loss
         loss_by_sample = model_action_distribution.log_prob(actions) * advantages_nsd
-        loss = loss_by_sample.mean()
+        loss = loss_by_sample.sum() / batch_size
 
         # Update parameters
         loss.backward()

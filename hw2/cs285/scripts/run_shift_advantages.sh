@@ -1,4 +1,4 @@
-# All the following shift the advantages calculated to ensure a non-negative loss. Then, we scale the advantages to be in the range [-1, 0]
+# All the following shift the advantages calculated to ensure a non-negative loss
 # All the following experiments don't use reward-to-go and don't standardize the advantages
 
 # Cartpole env
