@@ -171,9 +171,13 @@ class MLPPolicyPG(MLPPolicy):
             advantages_max = advantages.max()
             advantages_nsd = advantages - advantages_max
 
+            # Scale the advantages so that the most negative advantage is -1
+            advantages_min = advantages_nsd.min()
+            advantages_nsd = advantages_nsd / (-advantages_min)
+
         # Calculate loss
         loss_by_sample = model_action_distribution.log_prob(actions) * advantages_nsd
-        loss = loss_by_sample.sum()
+        loss = loss_by_sample.mean()
 
         # Update parameters
         loss.backward()
