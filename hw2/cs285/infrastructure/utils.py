@@ -160,7 +160,7 @@ class SampleTrajectoryVectorizedData:
         terminals = self.data["terminals"]
 
         for i in range(num_envs):
-            terminated = not terminals[i] or terminals[i][-1]
+            terminated = terminals[i] and terminals[i][-1]
             if terminated:
                 continue
 
