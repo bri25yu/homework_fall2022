@@ -59,7 +59,7 @@ python cs285/scripts/run_hw2.py \
 
 1. Which value estimator has better performance without advantage-standardization: the trajectory centric one, or the one using reward-to-go?
 
-The reward to go value estimator had better performance than the trajectory centric value estimator. For the small batch size case, neither configuration converged to the optimal 200 reward value, but the trajectory centric value estimator had much lower mins and more frequent dips in performance.
+The reward to go value estimator had better performance than the trajectory centric value estimator. For the small batch size case, neither configuration converged to the optimal 200 reward value, but the trajectory centric value estimator had much lower mins and more frequent dips in performance. For the large batch case, the reward to go estimator converged while the trajectory centric one didn't.
 
 
 2. Did advantage standardization help?
