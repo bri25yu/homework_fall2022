@@ -9,6 +9,7 @@ do
         python cs285/scripts/run_hw2.py \
             --exp_name q4_search_b${batch_size}_lr${learning_rate}_rtg_nnbaseline \
             --env_name HalfCheetah-v4 \
+            --multiprocess_gym_envs 10 \
             --ep_len 150 \
             --discount 0.95 \
             -n 100 \

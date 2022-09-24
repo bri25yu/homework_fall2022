@@ -9,6 +9,7 @@ do
         python cs285/scripts/run_hw2.py \
             --exp_name q2_b${batch_size}_r${learning_rate} \
             --env_name InvertedPendulum-v4 \
+            --multiprocess_gym_envs 10 \
             --ep_len 1000 \
             --discount 0.9 \
             -n 100 \

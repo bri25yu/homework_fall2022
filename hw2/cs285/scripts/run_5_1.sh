@@ -2,6 +2,7 @@
 python cs285/scripts/run_hw2.py \
     --exp_name q1_sb_no_rtg_dsa \
     --env_name CartPole-v0 \
+    --multiprocess_gym_envs 10 \
     -n 100 \
     -b 1000 \
     -dsa
@@ -10,6 +11,7 @@ python cs285/scripts/run_hw2.py \
 python cs285/scripts/run_hw2.py \
     --exp_name q1_sb_rtg_dsa \
     --env_name CartPole-v0 \
+    --multiprocess_gym_envs 10 \
     -n 100 \
     -b 1000 \
     -rtg \
@@ -19,6 +21,7 @@ python cs285/scripts/run_hw2.py \
 python cs285/scripts/run_hw2.py \
     --exp_name q1_sb_rtg_na \
     --env_name CartPole-v0 \
+    --multiprocess_gym_envs 10 \
     -n 100 \
     -b 1000 \
     -rtg \
@@ -27,6 +30,7 @@ python cs285/scripts/run_hw2.py \
 python cs285/scripts/run_hw2.py \
     --exp_name q1_lb_no_rtg_dsa \
     --env_name CartPole-v0 \
+    --multiprocess_gym_envs 10 \
     -n 100 \
     -b 5000 \
     -dsa \
@@ -35,6 +39,7 @@ python cs285/scripts/run_hw2.py \
 python cs285/scripts/run_hw2.py \
     --exp_name q1_lb_rtg_dsa \
     --env_name CartPole-v0 \
+    --multiprocess_gym_envs 10 \
     -n 100 \
     -b 5000 \
     -rtg \
@@ -44,6 +49,7 @@ python cs285/scripts/run_hw2.py \
 python cs285/scripts/run_hw2.py \
     --exp_name q1_lb_rtg_na \
     --env_name CartPole-v0 \
+    --multiprocess_gym_envs 10 \
     -n 100 \
     -b 5000 \
     -rtg

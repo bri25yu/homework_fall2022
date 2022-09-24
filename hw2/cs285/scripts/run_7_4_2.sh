@@ -4,6 +4,7 @@ learning_rate=
 python cs285/scripts/run_hw2.py \
     --exp_name q4_b${batch_size}_r${learning_rate} \
     --env_name HalfCheetah-v4 \
+    --multiprocess_gym_envs 10 \
     --ep_len 150 \
     --discount 0.95 \
     -n 100 \
@@ -15,6 +16,7 @@ python cs285/scripts/run_hw2.py \
 python cs285/scripts/run_hw2.py \
     --exp_name q4_b${batch_size}_r${learning_rate}_rtg \
     --env_name HalfCheetah-v4 \
+    --multiprocess_gym_envs 10 \
     --ep_len 150 \
     --discount 0.95 \
     -n 100 \
@@ -27,6 +29,7 @@ python cs285/scripts/run_hw2.py \
 python cs285/scripts/run_hw2.py \
     --exp_name q4_b${batch_size}_r${learning_rate}_nnbaseline \
     --env_name HalfCheetah-v4 \
+    --multiprocess_gym_envs 10 \
     --ep_len 150 \
     --discount 0.95 \
     -n 100 \
@@ -39,6 +42,7 @@ python cs285/scripts/run_hw2.py \
 python cs285/scripts/run_hw2.py \
     --exp_name q4_b${batch_size}_r${learning_rate}_rtg_nnbaseline \
     --env_name HalfCheetah-v4 \
+    --multiprocess_gym_envs 10 \
     --ep_len 150 \
     --discount 0.95 \
     -n 100 \

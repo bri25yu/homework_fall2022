@@ -1,6 +1,7 @@
 python cs285/scripts/run_hw2.py \
     --exp_name q3_b40000_r0.005 \
     --env_name LunarLanderContinuous-v2 \
+    --multiprocess_gym_envs 10 \
     --ep_len 1000 \
     --discount 0.99 \
     -n 100 \
