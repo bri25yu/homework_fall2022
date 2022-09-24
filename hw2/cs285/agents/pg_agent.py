@@ -17,7 +17,6 @@ class PGAgent(BaseAgent):
         self.nn_baseline = self.agent_params['nn_baseline']
         self.reward_to_go = self.agent_params['reward_to_go']
         self.gae_lambda = self.agent_params['gae_lambda']
-        self.normalize_by_timestep = self.agent_params['normalize_by_timestep']
 
         # actor/policy
         self.actor = MLPPolicyPG(
@@ -195,16 +194,12 @@ class PGAgent(BaseAgent):
             -and returns a list where the entry in each index t' is sum_{t'=t}^T gamma^(t'-t) * r_{t'}
         """
         gamma = self.gamma
-        normalize_by_timestep = self.normalize_by_timestep
 
         T = len(rewards)
 
         res = [rewards[T-1]]
         for t_prime in range(T-2, -1, -1):
             value = res[-1] * gamma + rewards[t_prime]
-
-            if normalize_by_timestep:
-                value = value / (T - t_prime)
 
             res.append(value)
 
