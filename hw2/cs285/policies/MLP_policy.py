@@ -196,7 +196,7 @@ class MLPPolicyPG(MLPPolicy):
             baseline_optimizer.zero_grad()
 
             # Retrieve baseline output
-            baseline_output = baseline(observations)
+            baseline_output = baseline(observations).squeeze()
 
             # Normalize q_values
             q_values_mean = q_values.mean()
