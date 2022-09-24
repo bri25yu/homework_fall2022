@@ -29,7 +29,6 @@ class PG_Trainer(object):
         train_args = {
             'num_agent_train_steps_per_iter': params['num_agent_train_steps_per_iter'],
             'shift_advantages': params['shift_advantages'],
-            'normalize_by_timestep': params['normalize_by_timestep'],
         }
 
         agent_params = {**computation_graph_args, **estimate_advantage_args, **train_args}
