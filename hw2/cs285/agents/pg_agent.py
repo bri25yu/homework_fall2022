@@ -112,7 +112,7 @@ class PGAgent(BaseAgent):
                 ## the current batch of q_values
             values_unnormalized_mean = values_unnormalized.mean()
             values_unnormalized_std = values_unnormalized.std()
-            values_normalized = (values_unnormalized - values_unnormalized_mean) * values_unnormalized_std
+            values_normalized = (values_unnormalized - values_unnormalized_mean) / values_unnormalized_std
 
             q_values_mean = q_values.mean()
             q_values_std = q_values.std()
