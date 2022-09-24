@@ -238,15 +238,9 @@ def sample_trajectories_vectorized(
     timesteps_this_batch = 0
     paths = []
     while timesteps_this_batch < min_timesteps_total:
-        paths = sample_trajectory_vectorized(env, policy, max_path_length)
-
-        for path in paths:
-            timesteps_this_path = get_pathlength(path)
-            paths.append(path)
-            timesteps_this_batch += timesteps_this_path
-
-            if timesteps_this_batch >= min_timesteps_total:
-                break
+        paths_batch = sample_trajectory_vectorized(env, policy, max_path_length)
+        paths.extend(paths_batch)
+        timesteps_this_batch += sum(map(get_pathlength, paths_batch))
 
     return paths, timesteps_this_batch
 
