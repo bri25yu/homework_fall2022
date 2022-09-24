@@ -217,7 +217,7 @@ class MLPPolicyPG(MLPPolicy):
             'Training Loss': ptu.to_numpy(loss),
         }
         if self.nn_baseline:
-            train_log["Baseline Loss"]: baseline_loss
+            train_log["Baseline Loss"] = baseline_loss
 
         return train_log
 
