@@ -183,10 +183,10 @@ class SampleTrajectoryVectorizedData:
 
 
 def sample_trajectory_vectorized(
-    env: gym.vector.VectorEnv, policy, max_path_length: int
+    env: List[gym.Env], policy, max_path_length: int
 ) -> List[Dict[str, np.ndarray]]:
     """
-    N_p -> number of parallel gym envs
+    N_p -> number of gym envs
     T_sample -> length of the path length of a particular sample
     D_o -> observation dim
     D_a -> action dim
