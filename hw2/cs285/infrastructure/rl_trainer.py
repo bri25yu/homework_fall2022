@@ -13,7 +13,6 @@ import torch
 from cs285.infrastructure import pytorch_util as ptu
 
 from cs285.infrastructure import utils
-from cs285.infrastructure.threaded_env import ThreadedVectorEnv
 from cs285.infrastructure.logger import Logger
 from cs285.infrastructure.action_noise_wrapper import ActionNoiseWrapper
 
@@ -55,9 +54,10 @@ class RL_Trainer(object):
         
         self.num_envs = self.params['multiprocess_gym_envs']
         if self.num_envs > 1:
-            env_fn = lambda: gym.make(self.params['env_name'])
-            self.env = ThreadedVectorEnv([env_fn] * self.num_envs)
-            dummy_env = env_fn()
+            self.env = gym.vector.make(
+                self.params['env_name'], render_mode=render_mode, num_envs=self.num_envs
+            )
+            dummy_env = gym.make(self.params['env_name'])
             env_for_properties = dummy_env
         else:
             self.env = gym.make(self.params['env_name'], render_mode=render_mode)
