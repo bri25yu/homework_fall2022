@@ -131,6 +131,122 @@ def sample_n_trajectories(env, policy, ntraj, max_path_length, render=False, ren
 
 ############################################
 ############################################
+# Vectorized versions of the previous sample trajectory functions
+
+class SampleTrajectoryVectorizedData:
+    TRACKED_OBJECTS = [
+        "observations",
+        "actions",
+        "rewards",
+        "next_observations",
+        "terminals",
+    ]
+
+    def __init__(self, num_envs: int) -> None:
+        self.num_envs = num_envs
+
+        self.data: Dict[List[List[np.ndarray]]] = {
+            name: self.init_vectorized_data_object() for name in self.TRACKED_OBJECTS
+        }
+
+    def init_vectorized_data_object(self) -> List[List]:
+        num_envs = self.num_envs
+
+        return [[] for _ in range(num_envs)]
+
+    def update_object(self, key: str, updates: np.ndarray) -> None:
+        num_envs = self.num_envs
+        obj_to_update = self.data[key]
+        terminals = self.data["terminals"]
+
+        for i in range(num_envs):
+            terminated = terminals[i] and terminals[i][-1]
+            if terminated:
+                continue
+
+            obj_to_update[i].append(updates[i])
+
+    def to_paths_list(self) -> List[Dict[str, np.ndarray]]:
+        num_envs = self.num_envs
+        data = self.data
+        tracked_objects = self.TRACKED_OBJECTS
+
+        def create_path(args: Tuple[np.ndarray]) -> Dict[str, np.ndarray]:
+            return Path(args[0], [], *args[1:])
+
+        paths: List[Dict[str, np.ndarray]] = []
+        for i in range(num_envs):
+            args = tuple(data[k][i] for k in tracked_objects)
+            paths.append(create_path(args))
+
+        return paths
+
+
+def sample_trajectory_vectorized(
+    env: List[gym.Env], policy, max_path_length: int
+) -> List[Dict[str, np.ndarray]]:
+    """
+    N_p -> number of gym envs
+    T_sample -> length of the path length of a particular sample
+    D_o -> observation dim
+    D_a -> action dim
+    """
+
+    # Initialize env for new rollouts
+    # `observations` is of shape (N_p, D_o)
+    observations: np.ndarray = env.reset()
+    num_envs = observations.shape[0]
+
+    # Initialize our data
+    data = SampleTrajectoryVectorizedData(num_envs)
+
+    steps = 0
+    while True:
+        # Record our observations
+        data.update_object("observations", observations)
+
+        # Get the policy actions of shape (N_p, D_a)
+        actions = policy.get_action(observations)
+        data.update_object("actions", actions)
+
+        # Take the actions
+        observations, rewards, terminals, _ = env.step(actions)
+
+        # Record results of taking that action
+        steps += 1
+        data.update_object("next_observations", observations)
+        data.update_object("rewards", rewards)
+
+        # Process terminals
+        max_path_length_reached = steps >= max_path_length
+        if max_path_length_reached:
+            terminals = np.full(num_envs, True, dtype=bool)
+
+        data.update_object("terminals", terminals)
+
+        # If all the envs are terminated, we exit
+        if terminals.all():
+            break
+
+    paths = data.to_paths_list()
+    return paths
+
+
+def sample_trajectories_vectorized(
+    env: gym.vector.VectorEnv, policy, min_timesteps_total: int, max_path_length: int
+) -> Tuple[List[Dict[str, np.ndarray]], int]:
+    timesteps_this_batch = 0
+    paths = []
+    while timesteps_this_batch < min_timesteps_total:
+        paths_batch = sample_trajectory_vectorized(env, policy, max_path_length)
+        paths.extend(paths_batch)
+        timesteps_this_batch += sum(map(get_pathlength, paths_batch))
+
+    return paths, timesteps_this_batch
+
+
+############################################
+############################################
 
 def Path(obs, image_obs, acs, rewards, next_obs, terminals):
     """

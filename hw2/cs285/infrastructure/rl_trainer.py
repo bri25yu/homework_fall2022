@@ -52,8 +52,17 @@ class RL_Trainer(object):
             render_mode = None
         else:
             render_mode = 'rgb_array'
+        
+        self.num_envs = self.params['multiprocess_gym_envs']
+        if self.num_envs > 1:
+            env_fn = lambda: gym.make(self.params['env_name'])
+            self.env = ThreadedVectorEnv([env_fn] * self.num_envs)
+            dummy_env = env_fn()
+            env_for_properties = dummy_env
+        else:
+            self.env = gym.make(self.params['env_name'], render_mode=render_mode)
+            env_for_properties = self.env
 
-        self.env = gym.make(self.params['env_name'], render_mode=render_mode)
         self.env.seed(seed)
 
         # Add noise wrapper
@@ -66,31 +75,31 @@ class RL_Trainer(object):
             matplotlib.use('Agg')
 
         # Maximum length for episodes
-        self.params['ep_len'] = self.params['ep_len'] or self.env.spec.max_episode_steps
+        self.params['ep_len'] = self.params['ep_len'] or env_for_properties.spec.max_episode_steps
         global MAX_VIDEO_LEN
         MAX_VIDEO_LEN = self.params['ep_len']
 
         # Is this env continuous, or self.discrete?
-        discrete = isinstance(self.env.action_space, gym.spaces.Discrete)
+        discrete = isinstance(env_for_properties.action_space, gym.spaces.Discrete)
         # Are the observations images?
-        img = len(self.env.observation_space.shape) > 2
+        img = len(env_for_properties.observation_space.shape) > 2
 
         self.params['agent_params']['discrete'] = discrete
 
         # Observation and action sizes
 
-        ob_dim = self.env.observation_space.shape if img else self.env.observation_space.shape[0]
-        ac_dim = self.env.action_space.n if discrete else self.env.action_space.shape[0]
+        ob_dim = env_for_properties.observation_space.shape if img else env_for_properties.observation_space.shape[0]
+        ac_dim = env_for_properties.action_space.n if discrete else env_for_properties.action_space.shape[0]
         self.params['agent_params']['ac_dim'] = ac_dim
         self.params['agent_params']['ob_dim'] = ob_dim
 
         # simulation timestep, will be used for video saving
-        if 'model' in dir(self.env):
-            self.fps = 1 / self.env.model.opt.timestep
+        if 'model' in dir(env_for_properties):
+            self.fps = 1 / env_for_properties.model.opt.timestep
         elif 'env_wrappers' in self.params:
             self.fps = 30 # This is not actually used when using the Monitor wrapper
-        elif 'video.frames_per_second' in self.env.env.metadata.keys():
-            self.fps = self.env.env.metadata['video.frames_per_second']
+        elif 'video.frames_per_second' in env_for_properties.env.metadata.keys():
+            self.fps = env_for_properties.env.metadata['video.frames_per_second']
         else:
             self.fps = 10
 
@@ -197,10 +206,16 @@ class RL_Trainer(object):
         print("\nCollecting data to be used for training...")
         env = self.env
         max_path_length = self.params['ep_len']
+        num_envs = self.num_envs
 
-        paths, envsteps_this_batch = utils.sample_trajectories(
-            env, collect_policy, batch_size, max_path_length, False
-        )
+        if num_envs > 1:
+            paths, envsteps_this_batch = utils.sample_trajectories_vectorized(
+                env, collect_policy, batch_size, max_path_length
+            )
+        else:
+            paths, envsteps_this_batch = utils.sample_trajectories(
+                env, collect_policy, batch_size, max_path_length, False
+            )
 
         # collect more rollouts with the same policy, to be saved as videos in tensorboard
         # note: here, we collect MAX_NVIDEO rollouts, each of length MAX_VIDEO_LEN
@@ -250,7 +265,10 @@ class RL_Trainer(object):
 
         # collect eval trajectories, for logging
         print("\nCollecting data for eval...")
-        eval_paths, _ = utils.sample_trajectories(self.env, eval_policy, self.params['eval_batch_size'], self.params['ep_len'])
+        if self.num_envs > 1:
+            eval_paths, _ = utils.sample_trajectories_vectorized(self.env, eval_policy, self.params['eval_batch_size'], self.params['ep_len'])
+        else:
+            eval_paths, _ = utils.sample_trajectories(self.env, eval_policy, self.params['eval_batch_size'], self.params['ep_len'])
 
         # save eval rollouts as videos in tensorboard event file
         if self.logvideo and train_video_paths != None:
