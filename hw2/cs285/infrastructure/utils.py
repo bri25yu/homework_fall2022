@@ -1,10 +1,11 @@
-from typing import Dict, List, Tuple
+import os
 
 import copy
 
 import numpy as np
 from tqdm import tqdm
-import gym
+
+import concurrent.futures
 
 
 ############################################
@@ -105,16 +106,24 @@ def sample_trajectory(env, policy, max_path_length, render=False, render_mode=('
     return Path(obs, image_obs, acs, rewards, next_obs, terminals)
 
 def sample_trajectories(env, policy, min_timesteps_per_batch, max_path_length, render=False, render_mode=('rgb_array')):
-    # TODO: get this from hw1
+    max_workers = n_parallel_paths = os.cpu_count()
+    executor = concurrent.futures.ThreadPoolExecutor(max_workers=max_workers)
+
+    def get_single_path():
+        path = sample_trajectory(env, policy, max_path_length, render)
+        return path, get_pathlength(path)
 
     timesteps_this_batch = 0
     paths = []
     while timesteps_this_batch < min_timesteps_per_batch:
-        path = sample_trajectory(env, policy, max_path_length, render)
-        timesteps_this_path = get_pathlength(path)
+        futures = [executor.submit(get_single_path) for _ in n_parallel_paths]
+        batch_paths = list(concurrent.futures.as_completed(futures))
 
-        paths.append(path)
-        timesteps_this_batch += timesteps_this_path        
+        for path, timesteps_this_path in batch_paths:
+            paths.append(path)
+            timesteps_this_batch += timesteps_this_path
+
+    executor.shutdown()
 
     return paths, timesteps_this_batch
 
