@@ -86,8 +86,6 @@ def get_eval_averagereturns(experiment_prefix: str) -> Tuple[List[float], List[f
 
 
 def q_5_1():
-    print("Creating results for exercise 5.1")
-
     prefix_template = "q2_pg_{batch_prefix}_{config_prefix}"
     batch_prefixes = {
         "Small batch (1000 examples)": "q1_sb",
@@ -167,5 +165,24 @@ def q_5_2():
     fig.savefig("report_resources/q5_2_heatmap.jpg")
 
 
+def q_7_3():
+    experiment_prefix = "q2_pg_q3_b40000_r0.005_LunarLanderContinuous-v2"
+    rows, cols = 1, 1
+    fig, ax = plt.subplots(rows, cols, figsize=(10 * cols, 8 * rows))
+
+    steps, returns = get_eval_averagereturns(experiment_prefix)
+
+    ax.plot(steps, returns, label="lr=5e-3, bs=40000")
+    ax.axhline(180, color="red", label="Target 180 return")
+
+    ax.set_title("Lunar Lander with neural network baselines")
+    ax.set_xlabel("Train iterations")
+    ax.set_ylabel("Eval return")
+    ax.legend()
+
+    fig.tight_layout()
+    fig.savefig("report_resources/q7_3.jpg")
+
+
 if __name__ == "__main__":
-    q_5_2()
+    q_7_3()

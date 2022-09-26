@@ -25,13 +25,23 @@ Batch size did make an impact, specifically in the case where we use the reward 
 
 
 ### Exercise 5.2
-For run replication, see `scripts/run_5_1.sh`.
+For run replication, see `scripts/run_5_2.sh`.
 
 
 ![](report_resources/q5_2_heatmap.jpg)
 
 
 ![](report_resources/q5_2_learning_curves.jpg)
+
+
+<div style="page-break-after: always;"></div>
+
+
+### Exercise 5.2
+For run replication, see `scripts/run_7_3.sh`.
+
+
+![](report_resources/q7_3.jpg)
 
 
 <div style="page-break-after: always;"></div>
