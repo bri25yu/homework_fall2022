@@ -1,5 +1,5 @@
-batch_size=
-learning_rate=
+batch_size=30000
+learning_rate=1e-2
 
 python cs285/scripts/run_hw2.py \
     --exp_name q4_b${batch_size}_r${learning_rate} \
