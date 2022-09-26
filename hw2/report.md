@@ -37,7 +37,7 @@ For run replication, see `scripts/run_5_2.sh`.
 <div style="page-break-after: always;"></div>
 
 
-### Exercise 5.2
+### Exercise 7.3
 For run replication, see `scripts/run_7_3.sh`.
 
 
@@ -45,3 +45,19 @@ For run replication, see `scripts/run_7_3.sh`.
 
 
 <div style="page-break-after: always;"></div>
+
+
+### Exercise 7.4.1
+For run replication, see `scripts/run_7_4_1.sh`.
+
+Having a larger learning rate typically improved performance. However, the best performance was when the learning rate matched the a particular batch size, namely with a batch size of 30000 and a learning rate of 2e-2. This is very curious because I would've expected larger batch sizes to do better in all scenarios, but maybe there's not enough noise in 50000 samples and too much noise in 10000 samples.
+
+
+![](report_resources/q7_4_1_heatmap.jpg)
+
+
+![](report_resources/q7_4_1_learning_curves.jpg)
+
+
+<div style="page-break-after: always;"></div>
+

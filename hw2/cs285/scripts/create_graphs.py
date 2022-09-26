@@ -184,5 +184,52 @@ def q_7_3():
     fig.savefig("report_resources/q7_3.jpg")
 
 
+def q_7_4_1():
+    batch_sizes = [10000, 30000, 50000]
+    learning_rates = ["5e-3", "1e-2", "2e-2"]
+
+    prefix_template = "q2_pg_q4_search_b{batch_size}_lr{learning_rate}"
+
+    rows, cols = 1, 1
+    fig, ax = plt.subplots(rows, cols, figsize=(10 * cols, 8 * rows))
+
+    data: List[Dict[str, Any]] = []
+    for batch_size in batch_sizes:
+        for learning_rate in learning_rates:
+            experiment_prefix = prefix_template.format(
+                batch_size=batch_size, learning_rate=learning_rate
+            )
+            steps, returns = get_eval_averagereturns(experiment_prefix)
+
+            ax.plot(steps, returns, label=f"lr={learning_rate}, bs={batch_size}")
+
+            data.append({
+                "Batch size": batch_size,
+                "Learning rate": learning_rate,
+                "Eval Average Return": returns[-1],
+            })
+
+    ax.set_title(f"HalfCheetah batch size vs learning rate results")
+    ax.set_xlabel("Train iterations")
+    ax.set_ylabel("Eval return")
+    ax.legend()
+
+    fig.tight_layout()
+    fig.savefig("report_resources/q7_4_1_learning_curves.jpg")
+
+    df = pd.DataFrame(data)
+
+    pivoted_df = df.pivot(index="Learning rate", columns="Batch size", values="Eval Average Return")
+    index_reordered = pd.Index(learning_rates)
+    pivoted_df = pd.DataFrame(pivoted_df, index=index_reordered)
+
+    fig, ax = plt.subplots(figsize=(10, 8))
+    sns.heatmap(pivoted_df, ax=ax, annot=True, fmt=".0f")
+
+    ax.set_title("Eval average return of hyperparameter tuning over learning rate and batch size")
+    fig.tight_layout()
+    fig.savefig("report_resources/q7_4_1_heatmap.jpg")
+
+
 if __name__ == "__main__":
-    q_7_3()
+    q_7_4_1()
