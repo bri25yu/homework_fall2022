@@ -71,3 +71,16 @@ For run replication, see `scripts/run_7_4_2.sh`.
 
 <div style="page-break-after: always;"></div>
 
+
+### Exercise 8.5
+For run replication, see `scripts/run_8_5.sh`.
+
+
+As we increase lambda, our variance decreases and our final average return increases.
+
+
+![](report_resources/q8_5.jpg)
+
+
+<div style="page-break-after: always;"></div>
+

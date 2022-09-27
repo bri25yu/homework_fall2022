@@ -252,7 +252,7 @@ def q_7_4_2():
 
         ax.plot(steps, returns, label=config_name)
 
-    ax.axhline(180, color="red", label="Target 200 return")
+    ax.axhline(200, color="red", label="Target 200 return")
 
     ax.set_title(f"HalfCheetah reward-to-go and nn baseline results\nbs=30000, lr=2e-2")
     ax.set_xlabel("Train iterations")
@@ -263,5 +263,32 @@ def q_7_4_2():
     fig.savefig("report_resources/q7_4_2.jpg")
 
 
+def q_8_5():
+    prefix_template = "q2_pg_q5_b2000_r0.001_lambda{gae_lambda}"
+    gae_lambdas = ["0", "0.95", "0.98", "0.99", "1"]
+
+    rows, cols = 1, 1
+    fig, ax = plt.subplots(rows, cols, figsize=(10 * cols, 8 * rows))
+
+    for gae_lambda in gae_lambdas:
+        experiment_prefix = prefix_template.format(
+            gae_lambda=gae_lambda
+        )
+
+        steps, returns = get_eval_averagereturns(experiment_prefix)
+
+        ax.plot(steps, returns, label=f"gae lambda={gae_lambda}")
+
+    ax.axhline(400, color="red", label="Target 400 return")
+
+    ax.set_title(f"Hopper-v4 GAE lambda results\nbs=2000, lr=1e-3")
+    ax.set_xlabel("Train iterations")
+    ax.set_ylabel("Eval return")
+    ax.legend()
+
+    fig.tight_layout()
+    fig.savefig("report_resources/q8_5.jpg")
+
+
 if __name__ == "__main__":
-    q_7_4_2()
+    q_8_5()
