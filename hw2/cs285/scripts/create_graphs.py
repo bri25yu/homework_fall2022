@@ -231,5 +231,37 @@ def q_7_4_1():
     fig.savefig("report_resources/q7_4_1_heatmap.jpg")
 
 
+def q_7_4_2():
+    prefix_template = "q2_pg_q4_b30000_r2e-2_{config_prefix}HalfCheetah-v4"
+    config_prefixes = {
+        "No reward-to-go, no nn baseline": "",
+        "No reward-to-go, nn baseline": "nnbaseline_",
+        "Reward-to-go, no nn baseline": "rtg_",
+        "Reward-to-go, nn baseline": "rtg_nnbaseline_",
+    }
+
+    rows, cols = 1, 1
+    fig, ax = plt.subplots(rows, cols, figsize=(10 * cols, 8 * rows))
+
+    for config_name, config_prefix in config_prefixes.items():
+        experiment_prefix = prefix_template.format(
+            config_prefix=config_prefix
+        )
+
+        steps, returns = get_eval_averagereturns(experiment_prefix)
+
+        ax.plot(steps, returns, label=config_name)
+
+    ax.axhline(180, color="red", label="Target 200 return")
+
+    ax.set_title(f"HalfCheetah reward-to-go and nn baseline results\nbs=30000, lr=2e-2")
+    ax.set_xlabel("Train iterations")
+    ax.set_ylabel("Eval return")
+    ax.legend()
+
+    fig.tight_layout()
+    fig.savefig("report_resources/q7_4_2.jpg")
+
+
 if __name__ == "__main__":
-    q_7_4_1()
+    q_7_4_2()

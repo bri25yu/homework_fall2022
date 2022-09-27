@@ -61,3 +61,13 @@ Having a larger learning rate typically improved performance. However, the best 
 
 <div style="page-break-after: always;"></div>
 
+
+### Exercise 7.4.2
+For run replication, see `scripts/run_7_4_2.sh`.
+
+
+![](report_resources/q7_4_2.jpg)
+
+
+<div style="page-break-after: always;"></div>
+
