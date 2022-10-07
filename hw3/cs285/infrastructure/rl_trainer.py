@@ -10,8 +10,6 @@ from gym import wrappers
 import numpy as np
 import torch
 
-from tqdm import trange
-
 from cs285.infrastructure import pytorch_util as ptu
 
 from cs285.infrastructure.utils import Path
@@ -324,8 +322,6 @@ class RL_Trainer(object):
         return paths, envsteps_this_batch, train_video_paths
 
     def train_agent(self):
-        print('\nTraining agent using sampled data from replay buffer...')
-
         # Retrieve relevant object from self
         batch_size = self.params['train_batch_size']
         agent = self.agent
@@ -335,7 +331,7 @@ class RL_Trainer(object):
             sampled_data = agent.sample(batch_size)
             return agent.train(*sampled_data)
 
-        all_logs = [train_step() for _ in trange(num_steps)]
+        all_logs = [train_step() for _ in range(num_steps)]
         return all_logs
 
     ####################################
