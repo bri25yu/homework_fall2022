@@ -75,8 +75,8 @@ class DQNCritic(BaseCritic):
             # target Q-network. Please review Lecture 8 for more details,
             # and page 4 of https://arxiv.org/pdf/1509.06461.pdf is also a good reference.
             # TODO
-            best_action_by_q_net = q_t_values.argmax(dim=1)
-            q_tp1 = qa_tp1_values[best_action_by_q_net]
+            best_action_by_q_net = qa_t_values.argmax(dim=1)
+            q_tp1 = torch.gather(qa_tp1_values, 1, best_action_by_q_net.unsqueeze(1)).squeeze(1)
         else:
             q_tp1, _ = qa_tp1_values.max(dim=1)
 
