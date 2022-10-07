@@ -86,7 +86,20 @@ class MLPPolicy(BasePolicy, nn.Module, metaclass=abc.ABCMeta):
 
     # query the policy with observation(s) to get selected action(s)
     def get_action(self, obs: np.ndarray) -> np.ndarray:
-        # TODO: get this from hw1 or hw2
+        if len(obs.shape) > 1:
+            observation = obs
+        else:
+            observation = obs[None]
+
+        # Convert our obs into a form usable by our model
+        obs_pt = ptu.from_numpy(observation)
+
+        # Run our model
+        action_pt = self(obs_pt)
+
+        # Convert our output action into a form usable by downstream
+        action = ptu.to_numpy(action_pt)
+
         return action
 
     # update/train this policy
@@ -99,8 +112,10 @@ class MLPPolicy(BasePolicy, nn.Module, metaclass=abc.ABCMeta):
     # return more flexible objects, such as a
     # `torch.distributions.Distribution` object. It's up to you!
     def forward(self, observation: torch.FloatTensor):
-        # TODO: get this from hw1 or hw2
-        return action_distribution
+        if self.discrete:
+            return self.logits_na(observation)
+        else:
+            return self.mean_net(observation)
 
 
 #####################################################
@@ -109,5 +124,27 @@ class MLPPolicy(BasePolicy, nn.Module, metaclass=abc.ABCMeta):
 
 class MLPPolicyAC(MLPPolicy):
     def update(self, observations, actions, adv_n=None):
-        # TODO: update the policy and return the loss
-        return loss.item()
+        # Retrieve relevant objects from self
+        loss_fn = self.loss
+        optimizer = self.optimizer
+
+        # Setup our optimizer for this train step
+        optimizer.zero_grad()
+
+        # Convert our obs into a form usable by our model
+        obs_pt = ptu.from_numpy(observations)
+
+        # Retrieve model output actions
+        model_actions = self(obs_pt)
+
+        # Convert loss inputs to a form usable by the loss object
+        actions_pt = ptu.from_numpy(actions)
+
+        # Calculate loss
+        loss = loss_fn(model_actions, actions_pt)
+
+        # Update parameters
+        loss.backward()
+        optimizer.step()
+
+        return ptu.to_numpy(loss)
