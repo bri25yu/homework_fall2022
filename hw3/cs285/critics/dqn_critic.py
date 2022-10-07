@@ -75,6 +75,7 @@ class DQNCritic(BaseCritic):
             # target Q-network. Please review Lecture 8 for more details,
             # and page 4 of https://arxiv.org/pdf/1509.06461.pdf is also a good reference.
             # TODO
+            pass
         else:
             q_tp1, _ = qa_tp1_values.max(dim=1)
 
