@@ -9,6 +9,9 @@ import gym
 from gym import wrappers
 import numpy as np
 import torch
+
+from tqdm import trange
+
 from cs285.infrastructure import pytorch_util as ptu
 
 from cs285.infrastructure.utils import Path
@@ -290,7 +293,10 @@ class RL_Trainer(object):
     ####################################
     ####################################
 
-    def collect_training_trajectories(self, itr, initial_expertdata, collect_policy, num_transitions_to_sample, save_expert_data_to_disk=False):
+    # This is close to an exact copy of hw2/rl_trainer RL_Trainer.collect_training_trajectories
+    def collect_training_trajectories(
+        self, itr, initial_expertdata, collect_policy, num_transitions_to_sample, save_expert_data_to_disk=False
+    ):
         """
         :param itr:
         :param load_initial_expertdata:  path to expert data pkl file
@@ -301,12 +307,36 @@ class RL_Trainer(object):
             envsteps_this_batch: the sum over the numbers of environment steps in paths
             train_video_paths: paths which also contain videos for visualization purposes
         """
-        # TODO: get this from hw1 or hw2
+        if (itr == 0) and (initial_expertdata is not None):  # If we're in the first iteration
+            loaded_paths = np.load(initial_expertdata, allow_pickle=True)
+            return loaded_paths, 0, None
 
+        # Retrieve relevant items from self
+        env = self.env
+        max_path_length = self.params['ep_len']
+
+        print("\nCollecting data to be used for training...")
+        paths, envsteps_this_batch = utils.sample_trajectories(
+            env, collect_policy, num_transitions_to_sample, max_path_length, False
+        )
+
+        train_video_paths = None
         return paths, envsteps_this_batch, train_video_paths
 
     def train_agent(self):
-        # TODO: get this from hw1 or hw2
+        print('\nTraining agent using sampled data from replay buffer...')
+
+        # Retrieve relevant object from self
+        batch_size = self.params['train_batch_size']
+        agent = self.agent
+        num_steps = self.params['num_agent_train_steps_per_iter']
+
+        def train_step():
+            sampled_data = agent.sample(batch_size)
+            return agent.train(*sampled_data)
+
+        all_logs = [train_step() for _ in trange(num_steps)]
+        return all_logs
 
     ####################################
     ####################################
