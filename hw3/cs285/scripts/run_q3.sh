@@ -1,5 +1,14 @@
 seeds=(1 2 3)
 
+# Baseline: no lr scheduling, Adam
+for seed in ${seeds[*]}
+do
+    python cs285/scripts/run_hw3_dqn.py \
+        --env_name LunarLander-v3 \
+        --exp_name q3_hparam0_$seed \
+        --seed $seed
+done
+
 # With lr scheduling, warmup_ratio=0.1
 for seed in ${seeds[*]}
 do

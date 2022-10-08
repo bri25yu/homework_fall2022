@@ -122,5 +122,44 @@ def q2():
     fig.savefig("report_resources/q2.png")
 
 
+def q3():
+    configs = {
+        "Baseline (Adam + no lr scheduling)": "q3_hparam0_",
+        "Learning rate scheduling (warmup ratio=0.1)": "q3_hparam1_",
+        "AdamW": "q3_hparam2_",
+        "AdamW + LR scheduling (warmup ratio=0.1)": "q3_hparam3_",
+    }
+    seeds = [1, 2, 3]
+    prefix_template = "{config}{seed}"
+
+    rows, cols = 1, 1
+    fig, ax = plt.subplots(rows, cols, figsize=(10 * cols, 8 * rows))
+
+    for config_name, config in configs.items():
+        data = []
+        for seed in seeds:
+            experiment_prefix = prefix_template.format(
+                config=config, seed=seed
+            )
+            steps, returns = get_train_averagereturns(experiment_prefix)
+
+            data.append(returns)
+
+        data = np.array(data)
+        stds = data.std(axis=0)
+        means = data.mean(axis=0)
+
+        ax.plot(steps, means, label=config_name)
+        ax.fill_between(steps, means-stds, means+stds, alpha=.1)
+
+    ax.set_title(f"Effect of learning rate scheduling and optimizer choice averaged over 3 seeds")
+    ax.set_xlabel("Train iterations")
+    ax.set_ylabel("Train return")
+    ax.legend()
+
+    fig.tight_layout()
+    fig.savefig("report_resources/q3.png")
+
+
 if __name__ == "__main__":
-    q2()
+    q3()
