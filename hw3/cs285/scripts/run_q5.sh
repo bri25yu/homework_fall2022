@@ -1,5 +1,5 @@
-ntu=
-ngsptu=
+ntu=10
+ngsptu=10
 
 # Around 20 iters should be 100 return
 # Around 100 iters should be 1000 return
