@@ -8,7 +8,7 @@ do
         --exp_name q3_hparam1_$seed \
         --seed $seed \
         --use_learning_rate_scheduler \
-        --warmup_ratio 0.1 \
+        --warmup_ratio 0.1
 done
 
 # With AdamW

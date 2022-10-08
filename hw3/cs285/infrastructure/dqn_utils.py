@@ -168,7 +168,7 @@ def lander_optimizer(optimizer_kwargs: Dict[str, Union[bool, float, None]]):
     if optimizer_kwargs["learning_rate"]:
         optim_kwargs["lr"] = optimizer_kwargs["learning_rate"]
     else:
-        optim_kwargs["lr"] = 1  # This was the original default
+        optim_kwargs["lr"] = 1e-3  # This was the original default
 
     if optimizer_kwargs["weight_decay"]:
         optim_kwargs["weight_decay"] = optimizer_kwargs["weight_decay"]
