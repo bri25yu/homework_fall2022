@@ -62,15 +62,15 @@ def get_first_tag_simple_value(summaries: List, tag: str) -> float:
     return get_first_simple_value(filtered)
 
 
-def get_train_averagereturns(experiment_prefix: str) -> Tuple[List[float], List[float]]:
+def get_property_and_steps(experiment_prefix: str, property_name: str) -> Tuple[List[float], List[float]]:
     """
-    Returns a tuple of steps and train average returns.
+    Returns a tuple of steps and property values.
 
     The arrays are sorted ascending in steps.
     """
     experiment_summary = load_eventfile_by_folder_prefix(experiment_prefix)
 
-    train_returns = filter_summaries_by_tag(experiment_summary, "Train_AverageReturn")
+    train_returns = filter_summaries_by_tag(experiment_summary, property_name)
     steps = [r[0].step for r in train_returns]
     returns = [r[1].simple_value for r in train_returns]
 
@@ -83,6 +83,34 @@ def get_train_averagereturns(experiment_prefix: str) -> Tuple[List[float], List[
     returns = returns[sorted_idxs]
 
     return steps, returns
+
+
+def get_train_averagereturns(experiment_prefix: str) -> Tuple[List[float], List[float]]:
+    return get_property_and_steps(experiment_prefix, "Train_AverageReturn")
+
+
+def get_train_bestreturns(experiment_prefix: str) -> Tuple[List[float], List[float]]:
+    return get_property_and_steps(experiment_prefix, "Train_BestReturn")
+
+
+def q1():
+    rows, cols = 1, 1
+    fig, ax = plt.subplots(rows, cols, figsize=(10 * cols, 8 * rows))
+
+    experiment_prefix = "q1_MsPacman"
+    steps, average_returns = get_train_averagereturns(experiment_prefix)
+    ax.plot(steps, average_returns, label="Average returns")
+
+    steps, best_returns = get_train_bestreturns(experiment_prefix)
+    ax.plot(steps, best_returns, label="Best returns")
+
+    ax.set_title(f"Deep Q network performance on MsPacman-v0 environment")
+    ax.set_xlabel("Train iterations")
+    ax.set_ylabel("Train return")
+    ax.legend()
+
+    fig.tight_layout()
+    fig.savefig("report_resources/q1.png")
 
 
 def q2():
@@ -162,4 +190,4 @@ def q3():
 
 
 if __name__ == "__main__":
-    q3()
+    q1()
