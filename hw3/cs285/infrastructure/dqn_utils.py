@@ -186,10 +186,9 @@ def lander_optimizer(optimizer_kwargs: Dict[str, Union[bool, float, None]]):
                     return 1 - (timestep - num_warmup_steps) / num_decay_steps
 
         else:
-            learning_rate_schedule = lambda epoch: 1  # keep init learning rate
+            learning_rate_schedule = lambda epoch: 1
     else:
-        # This was the original default
-        learning_rate_schedule = lambda epoch: 1e-3,  # keep init learning rate
+        learning_rate_schedule = lambda epoch: 1
 
     if optimizer_kwargs["use_adamw"]:
         constructor = optim.AdamW
