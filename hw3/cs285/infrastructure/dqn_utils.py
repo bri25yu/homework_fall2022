@@ -128,7 +128,6 @@ def atari_exploration_schedule(num_timesteps):
         [
             (0, 1.0),
             (1e6, 0.1),
-            (num_timesteps / 8, 0.01),
         ], outside_value=0.01
     )
 
