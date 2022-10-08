@@ -86,4 +86,29 @@ class BootstrappedContinuousCritic(nn.Module, BaseCritic):
         # HINT: make sure to squeeze the output of the critic_network to ensure
         #       that its dimensions match the reward
 
+        # Retrieve relevant objects from self
+        num_target_updates = self.num_target_updates
+        num_grad_steps_per_target_update = self.num_grad_steps_per_target_update
+        gamma = self.gamma
+        critic_network = self.critic_network
+        loss_fn = self.loss
+        optimizer = self.optimizer
+
+        for _ in range(num_target_updates):
+            # Calculate target values
+            V_s_prime = critic_network(next_ob_no)
+            target_values = reward_n + gamma * V_s_prime * (1 - terminal_n)
+
+            for _ in range(num_grad_steps_per_target_update):
+                # Reset optimizer
+                optimizer.zero_grad()
+
+                # Calculate loss
+                V_s = critic_network(ob_no)
+                loss = loss_fn(V_s, target_values)
+
+                # Perform gradient operation and update params
+                loss.backward()
+                optimizer.step()
+
         return loss.item()
