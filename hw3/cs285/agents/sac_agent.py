@@ -6,7 +6,7 @@ from cs285.infrastructure.replay_buffer import ReplayBuffer
 from cs285.infrastructure.utils import *
 from cs285.policies.MLP_policy import MLPPolicyAC
 
-from hw3.cs285.infrastructure.sac_utils import soft_update_params
+from cs285.infrastructure.sac_utils import soft_update_params
 from .base_agent import BaseAgent
 import gym
 from cs285.policies.sac_policy import MLPPolicySAC
