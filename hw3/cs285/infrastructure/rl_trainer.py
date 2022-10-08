@@ -10,6 +10,8 @@ from gym import wrappers
 import numpy as np
 import torch
 
+from tqdm import trange
+
 from cs285.infrastructure import pytorch_util as ptu
 
 from cs285.infrastructure.utils import Path
@@ -137,12 +139,7 @@ class RL_Trainer(object):
         self.total_envsteps = 0
         self.start_time = time.time()
 
-        print_period = 1000 if isinstance(self.agent, DQNAgent) else 1
-
-        for itr in range(n_iter):
-            if itr % print_period == 0:
-                print("\n\n********** Iteration %i ************"%itr)
-
+        for itr in trange(n_iter):
             # decide if videos should be rendered/logged at this iteration
             if itr % self.params['video_log_freq'] == 0 and self.params['video_log_freq'] != -1:
                 self.logvideo = True
@@ -183,8 +180,6 @@ class RL_Trainer(object):
             self.agent.add_to_replay_buffer(paths)
 
             # train agent (using sampled data from replay buffer)
-            if itr % print_period == 0:
-                print("\nTraining agent...")
             all_logs = self.train_agent()
 
             # log/save
