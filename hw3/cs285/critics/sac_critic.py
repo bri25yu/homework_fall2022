@@ -70,7 +70,3 @@ class SACCritic(nn.Module, BaseCritic):
         values = (Q_value_1, Q_value_2)
 
         return values
-
-
-
-        

@@ -59,10 +59,30 @@ class SACAgent(BaseAgent):
         alpha = self.actor.alpha
         critic = self.critic
         critic_target = self.critic_target
+        critic_optimizer = critic.optimizer
+        loss_fn = critic.loss
 
-        target = critic_target()
+        # Convert inputs to usable form
+        ob_no = ptu.from_numpy(ob_no)
+        ac_na = ptu.from_numpy(ac_na)
+        next_ob_no = ptu.from_numpy(next_ob_no)
+        re_n = ptu.from_numpy(re_n)
 
-        return critic_loss
+        # Reset optimizers
+        critic_optimizer.zero_grad()
+
+        # !TODO
+
+        target_Q1, target_Q2 = critic_target(ob_no, ac_na)
+        Q1, Q2 = critic(ob_no)
+        calculate_single_target = lambda target_Q: re_n + gamma * alpha * None
+        critic_loss = loss_fn(None, target_Q1)
+
+        # Update parameters
+        critic_loss.backward()
+        critic_optimizer.step()
+
+        return ptu.to_numpy(critic_loss)
 
     def train(self, ob_no, ac_na, re_n, next_ob_no, terminal_n):
         # Retrieve relevant objects from self
@@ -77,11 +97,12 @@ class SACAgent(BaseAgent):
         # 1. Implement the following pseudocode:
         # for agent_params['num_critic_updates_per_agent_update'] steps,
         #     update the critic
+        critic_loss = None
         for step in range(num_critic_updates_per_agent_update):
             if step % critic_target_update_frequency == 0:
                 soft_update_params(critic, critic_target, critic_tau)
 
-            self.update_critic(ob_no, ac_na, next_ob_no, re_n, terminal_n)
+            critic_loss = self.update_critic(ob_no, ac_na, next_ob_no, re_n, terminal_n)
 
         # 2. Softly update the target every critic_target_update_frequency (HINT: look at sac_utils)
 
@@ -89,15 +110,16 @@ class SACAgent(BaseAgent):
         # If you need to update actor
         # for agent_params['num_actor_updates_per_agent_update'] steps,
         #     update the actor
+        actor_loss, alpha_loss, alpha = None, None, None
         for _ in range(actor_update_frequency):
-            self.actor.update(ob_no, critici)
+            actor_loss, alpha_loss, alpha = self.actor.update(ob_no, critic)
 
         # 4. gather losses for logging
         loss = OrderedDict()
-        loss['Critic_Loss'] = TODO
-        loss['Actor_Loss'] = TODO
-        loss['Alpha_Loss'] = TODO
-        loss['Temperature'] = TODO
+        loss['Critic_Loss'] = critic_loss
+        loss['Actor_Loss'] = actor_loss
+        loss['Alpha_Loss'] = alpha_loss
+        loss['Temperature'] = alpha
 
         return loss
 
