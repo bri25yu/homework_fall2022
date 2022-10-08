@@ -18,7 +18,15 @@ class Q_Trainer(object):
             'double_q': params['double_q'],
         }
 
-        env_args = get_env_kwargs(params['env_name'])
+        optimizer_kwargs = {
+            "use_learning_rate_scheduler": params["use_learning_rate_scheduler"],
+            "warmup_ratio": params["warmup_ratio"],
+            "use_adamw": params["use_adamw"],
+            "learning_rate": params["learning_rate"],
+            "weight_decay": params["weight_decay"],
+        }
+
+        env_args = get_env_kwargs(params['env_name'], optimizer_kwargs=optimizer_kwargs)
 
         self.agent_params = {**train_args, **env_args, **params}
 
@@ -55,6 +63,18 @@ def main():
     parser.add_argument('--num_agent_train_steps_per_iter', type=int, default=1)
     parser.add_argument('--num_critic_updates_per_agent_update', type=int, default=1)
     parser.add_argument('--double_q', action='store_true')
+
+    # The original implementation doesn't use a learning rate scheduler
+    # But I think it can definitely help stabilize the training, especially in the case without double q near the end of the run
+    # We assume a linear learning rate warmup and decay
+    parser.add_argument("--learning_rate", type=float, default=None)
+    parser.add_argument("--use_learning_rate_scheduler", action="store_true")
+    parser.add_argument("--warmup_ratio", type=float, default=None)
+
+    # Environment variability is a huge problem, so the idea is to somehow
+    # get weights that are relatively robust, so we use AdamW with a learning rate and weight decay
+    parser.add_argument("--use_adamw", action="store_true")
+    parser.add_argument("--weight_decay", type=float, default=None)
 
     parser.add_argument('--seed', type=int, default=1)
     parser.add_argument('--no_gpu', '-ngpu', action='store_true')

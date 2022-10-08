@@ -1,5 +1,7 @@
 """This file includes a collection of utility functions that are useful for
 implementing DQN."""
+from typing import Dict, Union
+
 import random
 from collections import namedtuple
 
@@ -36,7 +38,7 @@ def register_custom_envs():
         )
 
 
-def get_env_kwargs(env_name):
+def get_env_kwargs(env_name, optimizer_kwargs):
     if env_name in ['MsPacman-v0', 'PongNoFrameskip-v4']:
         kwargs = {
             'learning_starts': 50000,
@@ -57,8 +59,8 @@ def get_env_kwargs(env_name):
     elif env_name == 'LunarLander-v3':
         def lunar_empty_wrapper(env):
             return env
+
         kwargs = {
-            'optimizer_spec': lander_optimizer(),
             'q_func': create_lander_q_network,
             'replay_buffer_size': 50000,
             'batch_size': 32,
@@ -73,6 +75,9 @@ def get_env_kwargs(env_name):
             'env_wrappers': lunar_empty_wrapper
         }
         kwargs['exploration_schedule'] = lander_exploration_schedule(kwargs['num_timesteps'])
+
+        optimizer_kwargs["num_timesteps"] = kwargs["num_timesteps"]
+        kwargs['optimizer_spec']= lander_optimizer(optimizer_kwargs)
 
     else:
         raise NotImplementedError
@@ -158,15 +163,40 @@ def atari_optimizer(num_timesteps):
     )
 
 
-def lander_optimizer():
-    return OptimizerSpec(
-        constructor=optim.Adam,
-        optim_kwargs=dict(
-            lr=1,
-        ),
-        learning_rate_schedule=lambda epoch: 1e-3,  # keep init learning rate
-    )
+def lander_optimizer(optimizer_kwargs: Dict[str, Union[bool, float, None]]):
+    optim_kwargs = {}
+    if optimizer_kwargs["learning_rate"]:
+        optim_kwargs["lr"] = optimizer_kwargs["learning_rate"]
+    else:
+        optim_kwargs["lr"] = 1  # This was the original default
 
+    if optimizer_kwargs["weight_decay"]:
+        optim_kwargs["weight_decay"] = optimizer_kwargs["weight_decay"]
+
+    if optimizer_kwargs["use_learning_rate_scheduler"]:
+        if optimizer_kwargs["warmup_ratio"]:
+            num_timesteps = optimizer_kwargs["num_timesteps"]
+            num_warmup_steps = optimizer_kwargs["warmup_ratio"] * num_timesteps
+            num_decay_steps = num_timesteps - num_warmup_steps
+
+            def learning_rate_schedule(timestep: int):
+                if timestep < num_warmup_steps:
+                    return timestep / num_warmup_steps
+                else:
+                    return 1 - (timestep - num_warmup_steps) / num_decay_steps
+
+        else:
+            learning_rate_schedule = lambda epoch: 1  # keep init learning rate
+    else:
+        # This was the original default
+        learning_rate_schedule = lambda epoch: 1e-3,  # keep init learning rate
+
+    if optimizer_kwargs["use_adamw"]:
+        constructor = optim.AdamW
+    else:
+        constructor=optim.Adam
+
+    return OptimizerSpec(constructor, optim_kwargs, learning_rate_schedule)
 
 def lander_exploration_schedule(num_timesteps):
     return PiecewiseSchedule(
