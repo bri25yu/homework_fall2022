@@ -89,6 +89,10 @@ def get_train_averagereturns(experiment_prefix: str) -> Tuple[List[float], List[
     return get_property_and_steps(experiment_prefix, "Train_AverageReturn")
 
 
+def get_eval_averagereturns(experiment_prefix: str) -> Tuple[List[float], List[float]]:
+    return get_property_and_steps(experiment_prefix, "Eval_AverageReturn")
+
+
 def get_train_bestreturns(experiment_prefix: str) -> Tuple[List[float], List[float]]:
     return get_property_and_steps(experiment_prefix, "Train_BestReturn")
 
@@ -189,5 +193,53 @@ def q3():
     fig.savefig("report_resources/q3.png")
 
 
+def q4():
+    configs = {
+        "# target updates = 1, # grad steps per target update = 1": "q4_ac_1_1",
+        "# target updates = 100, # grad steps per target update = 1": "q4_100_1",
+        "# target updates = 1, # grad steps per target update = 100": "q4_1_100",
+        "# target updates = 10, # grad steps per target update = 10": "q4_10_10",
+    }
+
+    rows, cols = 1, 1
+    fig, ax = plt.subplots(rows, cols, figsize=(10 * cols, 8 * rows))
+
+    for config_name, config_prefix in configs.items():
+        steps, returns = get_eval_averagereturns(config_prefix)
+
+        ax.plot(steps, returns, label=config_name)
+
+    ax.set_title(f"Comparison of number of target updates and grad steps per target update")
+    ax.set_xlabel("Train iterations")
+    ax.set_ylabel("Eval return")
+    ax.legend()
+
+    fig.tight_layout()
+    fig.savefig("report_resources/q4.png")
+
+
+def q5():
+    configs = {
+        "HalfCheetah environment": "q5_10_10_HalfCheetah",
+        "InvertedPendulum environment": "q5_10_10_InvertedPendulum",
+    }
+
+    rows, cols = 1, 2
+    fig, axs = plt.subplots(rows, cols, figsize=(10 * cols, 8 * rows))
+
+    for ax, (config_name, config_prefix) in zip(axs, configs.items()):
+        steps, returns = get_eval_averagereturns(config_prefix)
+
+        ax.plot(steps, returns)
+
+        ax.set_title(config_name)
+        ax.set_xlabel("Train iterations")
+        ax.set_ylabel("Eval return")
+
+    fig.suptitle(f"Validation of actor critic on different environments")
+    fig.tight_layout()
+    fig.savefig("report_resources/q5.png")
+
+
 if __name__ == "__main__":
-    q1()
+    q5()
