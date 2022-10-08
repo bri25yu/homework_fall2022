@@ -123,15 +123,15 @@ def Path(obs, image_obs, acs, rewards, next_obs, terminals):
 
 def Path_from_trajectory(trajectory: List[List[float]]) -> Dict[str, np.ndarray]:
     # Transposed is (obs, acs, rewards, next_obs, terminals)
-    transposed = np.array(trajectory, dtype=np.float32).T
+    transposed = list(zip(*trajectory))
 
     return {
-        "observation" : transposed[0],
+        "observation" : np.array(transposed[0], dtype=np.float32),
         "image_obs" : np.array([], dtype=np.uint8),
-        "action" : transposed[1],
-        "reward" : transposed[2],
-        "next_observation": transposed[3],
-        "terminal": transposed[4],
+        "action" : np.array(transposed[1], dtype=np.float32),
+        "reward" : np.array(transposed[2], dtype=np.float32),
+        "next_observation": np.array(transposed[3], dtype=np.float32),
+        "terminal": np.array(transposed[4], dtype=np.float32),
     }
 
 

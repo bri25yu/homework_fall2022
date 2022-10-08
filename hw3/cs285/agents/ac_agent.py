@@ -42,7 +42,7 @@ class ACAgent(BaseAgent):
         #     update the critic
         critic_loss = None
         for _ in range(num_critic_updates_per_agent_update):
-            loss = critic.update(ob_no, ac_na, next_ob_no, re_n, terminal_n)
+            critic_loss = critic.update(ob_no, ac_na, next_ob_no, re_n, terminal_n)
 
         # advantage = estimate_advantage(...)
         advantage = self.estimate_advantage(ob_no, next_ob_no, re_n, terminal_n)

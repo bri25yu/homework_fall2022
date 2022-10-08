@@ -94,9 +94,15 @@ class BootstrappedContinuousCritic(nn.Module, BaseCritic):
         loss_fn = self.loss
         optimizer = self.optimizer
 
+        # Convert values from numpy to pt tensor
+        ob_no = ptu.from_numpy(ob_no)
+        next_ob_no = ptu.from_numpy(next_ob_no)
+        reward_n = ptu.from_numpy(reward_n)
+        terminal_n = ptu.from_numpy(terminal_n)
+
         for _ in range(num_target_updates):
             # Calculate target values
-            V_s_prime = critic_network(next_ob_no)
+            V_s_prime = critic_network(next_ob_no).detach()
             target_values = reward_n + gamma * V_s_prime * (1 - terminal_n)
 
             for _ in range(num_grad_steps_per_target_update):
