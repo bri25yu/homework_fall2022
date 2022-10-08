@@ -95,11 +95,12 @@ class MLPPolicy(BasePolicy, nn.Module, metaclass=abc.ABCMeta):
         obs_pt = ptu.from_numpy(observation)
 
         # Run our model
-        action_pt = self(obs_pt)
+        action_pt = self(obs_pt).sample()
 
         # Convert our output action into a form usable by downstream
         action = ptu.to_numpy(action_pt)
 
+        # TODO return the action that the policy prescribes
         return action
 
     # update/train this policy
@@ -113,9 +114,19 @@ class MLPPolicy(BasePolicy, nn.Module, metaclass=abc.ABCMeta):
     # `torch.distributions.Distribution` object. It's up to you!
     def forward(self, observation: torch.FloatTensor):
         if self.discrete:
-            return self.logits_na(observation)
+            logits = self.logits_na(observation)
+            action_distribution = distributions.Categorical(logits=logits)
+            return action_distribution
         else:
-            return self.mean_net(observation)
+            batch_mean = self.mean_net(observation)
+            scale_tril = torch.diag(torch.exp(self.logstd))
+            batch_dim = batch_mean.shape[0]
+            batch_scale_tril = scale_tril.repeat(batch_dim, 1, 1)
+            action_distribution = distributions.MultivariateNormal(
+                batch_mean,
+                scale_tril=batch_scale_tril,
+            )
+            return action_distribution
 
 
 #####################################################
@@ -123,25 +134,23 @@ class MLPPolicy(BasePolicy, nn.Module, metaclass=abc.ABCMeta):
 
 
 class MLPPolicyAC(MLPPolicy):
-    def update(self, observations, actions, adv_n=None):
+    def update(self, observations, actions, advantages=None):
+        observations = ptu.from_numpy(observations)
+        actions = ptu.from_numpy(actions)
+        advantages = ptu.from_numpy(advantages)
+
         # Retrieve relevant objects from self
-        loss_fn = self.loss
         optimizer = self.optimizer
 
         # Setup our optimizer for this train step
         optimizer.zero_grad()
 
-        # Convert our obs into a form usable by our model
-        obs_pt = ptu.from_numpy(observations)
-
-        # Retrieve model output actions
-        model_actions = self(obs_pt)
-
-        # Convert loss inputs to a form usable by the loss object
-        actions_pt = ptu.from_numpy(actions)
+        # Retrieve model output action distribution
+        model_action_distribution = self(observations)
 
         # Calculate loss
-        loss = loss_fn(model_actions, actions_pt)
+        loss_by_sample = -model_action_distribution.log_prob(actions) * advantages
+        loss = loss_by_sample.sum()
 
         # Update parameters
         loss.backward()
