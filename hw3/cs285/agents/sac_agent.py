@@ -5,6 +5,8 @@ from cs285.critics.bootstrapped_continuous_critic import \
 from cs285.infrastructure.replay_buffer import ReplayBuffer
 from cs285.infrastructure.utils import *
 from cs285.policies.MLP_policy import MLPPolicyAC
+
+from hw3.cs285.infrastructure.sac_utils import soft_update_params
 from .base_agent import BaseAgent
 import gym
 from cs285.policies.sac_policy import MLPPolicySAC
@@ -50,14 +52,36 @@ class SACAgent(BaseAgent):
         # 1. Compute the target Q value. 
         # HINT: You need to use the entropy term (alpha)
         # 2. Get current Q estimates and calculate critic loss
-        # 3. Optimize the critic  
+        # 3. Optimize the critic
+
+        # Retrieve relevant objects from self
+        gamma = self.gamma
+        alpha = self.actor.alpha
+        critic = self.critic
+        critic_target = self.critic_target
+
+        target = critic_target()
+
         return critic_loss
 
     def train(self, ob_no, ac_na, re_n, next_ob_no, terminal_n):
+        # Retrieve relevant objects from self
+        num_critic_updates_per_agent_update = self.agent_params["num_critic_updates_per_agent_update"]
+        actor_update_frequency = self.actor_update_frequency
+        critic_target_update_frequency = self.critic_target_update_frequency
+        critic = self.critic
+        critic_target = self.critic_target
+        critic_tau = self.critic_tau
+
         # TODO 
         # 1. Implement the following pseudocode:
         # for agent_params['num_critic_updates_per_agent_update'] steps,
         #     update the critic
+        for step in range(num_critic_updates_per_agent_update):
+            if step % critic_target_update_frequency == 0:
+                soft_update_params(critic, critic_target, critic_tau)
+
+            self.update_critic(ob_no, ac_na, next_ob_no, re_n, terminal_n)
 
         # 2. Softly update the target every critic_target_update_frequency (HINT: look at sac_utils)
 
@@ -65,6 +89,8 @@ class SACAgent(BaseAgent):
         # If you need to update actor
         # for agent_params['num_actor_updates_per_agent_update'] steps,
         #     update the actor
+        for _ in range(actor_update_frequency):
+            self.actor.update(ob_no, critici)
 
         # 4. gather losses for logging
         loss = OrderedDict()
