@@ -3,7 +3,7 @@
 # Target 1000 eval average return under 100000 steps
 python cs285/scripts/run_hw3_sac.py \
     --env_name InvertedPendulum-v4 \
-    ----exp_name q6a_sac_InvertedPendulum \
+    --exp_name q6a_sac_InvertedPendulum \
     --ep_len 1000 \
     --discount 0.99 \
     --scalar_log_freq 1000 \
