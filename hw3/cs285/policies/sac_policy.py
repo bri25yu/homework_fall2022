@@ -77,10 +77,10 @@ class MLPPolicySAC(MLPPolicy):
 
         # Retrieve relevant objects from self
         log_std = self.log_std
-        log_std_bounds = self.log_std_bounds
+        log_std_min, log_std_max = self.log_std_bounds
 
         # Clip log_std
-        log_std = log_std.clip(*log_std_bounds)
+        log_std = log_std.clip(log_std_min, log_std_max)
 
         # Calculate new action distribution from old
         loc = self.mean_net(observation)
@@ -117,7 +117,7 @@ class MLPPolicySAC(MLPPolicy):
         actor_loss_by_sample = log_prob_loss_by_sample - Q_values
         actor_loss = actor_loss_by_sample.sum()
         alpha_loss_by_sample = log_prob_loss_by_sample - alpha * target_entropy
-        alpha_loss = alpha_loss_by_sample
+        alpha_loss = alpha_loss_by_sample.sum()
 
         # Update parameters
         actor_loss.backward()

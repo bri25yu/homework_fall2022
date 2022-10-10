@@ -1,5 +1,7 @@
 from collections import OrderedDict
 
+import torch
+
 from cs285.critics.bootstrapped_continuous_critic import \
     BootstrappedContinuousCritic
 from cs285.infrastructure.replay_buffer import ReplayBuffer
@@ -55,8 +57,9 @@ class SACAgent(BaseAgent):
         # 3. Optimize the critic
 
         # Retrieve relevant objects from self
+        actor = self.actor
+        alpha = actor.alpha
         gamma = self.gamma
-        alpha = self.actor.alpha
         critic = self.critic
         critic_target = self.critic_target
         critic_optimizer = critic.optimizer
@@ -67,16 +70,24 @@ class SACAgent(BaseAgent):
         ac_na = ptu.from_numpy(ac_na)
         next_ob_no = ptu.from_numpy(next_ob_no)
         re_n = ptu.from_numpy(re_n)
+        terminal_n = ptu.from_numpy(terminal_n)
 
         # Reset optimizers
         critic_optimizer.zero_grad()
 
-        # !TODO
+        # Get next action probs
+        next_action_distribution = actor(next_ob_no)
+        next_action = next_action_distribution.sample()
+        next_action_log_probs = next_action_distribution.log_prob(next_action)
+        next_action_log_probs = next_action_log_probs.detach()  # We don't want gradients to propogate to actor
 
-        target_Q1, target_Q2 = critic_target(ob_no, ac_na)
+        # Calculate target value
+        Q_target_tp1_1, Q_target_tp1_2 = critic_target(next_ob_no, ac_na)
+        Q_target_tp1 = torch.minimum(Q_target_tp1_1, Q_target_tp1_2).detach()
+        target_value = re_n + gamma * (1 - terminal_n) * (Q_target_tp1 - alpha * next_action_log_probs)
+
         Q1, Q2 = critic(ob_no)
-        calculate_single_target = lambda target_Q: re_n + gamma * alpha * None
-        critic_loss = loss_fn(None, target_Q1)
+        critic_loss = loss_fn(Q1, target_value) + loss_fn(Q2, target_value)
 
         # Update parameters
         critic_loss.backward()
