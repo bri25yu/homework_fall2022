@@ -7,7 +7,7 @@ from torch import nn
 from torch import optim
 import itertools
 
-from hw3.cs285.infrastructure.sac_utils import SquashedNormal
+from cs285.infrastructure.sac_utils import SquashedNormal
 
 class MLPPolicySAC(MLPPolicy):
     def __init__(self,
