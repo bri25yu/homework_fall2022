@@ -76,7 +76,7 @@ class MLPPolicySAC(MLPPolicy):
         # You will need SquashedNormal from sac_utils file 
 
         # Retrieve relevant objects from self
-        log_std = self.log_std
+        log_std = self.logstd
         log_std_min, log_std_max = self.log_std_bounds
 
         # Clip log_std
