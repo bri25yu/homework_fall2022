@@ -58,7 +58,7 @@ class SACAgent(BaseAgent):
 
         # Retrieve relevant objects from self
         actor = self.actor
-        alpha = actor.alpha
+        alpha = actor.alpha.detach()
         gamma = self.gamma
         critic = self.critic
         critic_target = self.critic_target
@@ -84,10 +84,13 @@ class SACAgent(BaseAgent):
         # Calculate target value
         Q_target_tp1_1, Q_target_tp1_2 = critic_target(next_ob_no, ac_na)
         Q_target_tp1 = torch.minimum(Q_target_tp1_1, Q_target_tp1_2).detach()
-        target_value = re_n + gamma * (1 - terminal_n) * (Q_target_tp1 - alpha * next_action_log_probs)
+        target_value = Q_target_tp1 - alpha * next_action_log_probs
+        target_value = target_value.squeeze()  # Squeeze to 1D
+        Q_target = re_n + gamma * (1 - terminal_n) * target_value
 
-        Q1, Q2 = critic(ob_no)
-        critic_loss = loss_fn(Q1, target_value) + loss_fn(Q2, target_value)
+        # Calculate critic loss
+        Q1, Q2 = critic(ob_no, ac_na)
+        critic_loss = loss_fn(Q1.squeeze(), Q_target) + loss_fn(Q2.squeeze(), Q_target)
 
         # Update parameters
         critic_loss.backward()
@@ -98,17 +101,23 @@ class SACAgent(BaseAgent):
     def train(self, ob_no, ac_na, re_n, next_ob_no, terminal_n):
         # Retrieve relevant objects from self
         num_critic_updates_per_agent_update = self.agent_params["num_critic_updates_per_agent_update"]
+        num_actor_updates_per_agent_update = self.agent_params["num_actor_updates_per_agent_update"]
         actor_update_frequency = self.actor_update_frequency
         critic_target_update_frequency = self.critic_target_update_frequency
         critic = self.critic
         critic_target = self.critic_target
         critic_tau = self.critic_tau
+        actor = self.actor
 
         # TODO 
         # 1. Implement the following pseudocode:
         # for agent_params['num_critic_updates_per_agent_update'] steps,
         #     update the critic
+
+        # Setup logging vars
         critic_loss = None
+        actor_loss, alpha_loss, alpha = None, None, None
+
         for step in range(num_critic_updates_per_agent_update):
             if step % critic_target_update_frequency == 0:
                 soft_update_params(critic, critic_target, critic_tau)
@@ -121,9 +130,9 @@ class SACAgent(BaseAgent):
         # If you need to update actor
         # for agent_params['num_actor_updates_per_agent_update'] steps,
         #     update the actor
-        actor_loss, alpha_loss, alpha = None, None, None
-        for _ in range(actor_update_frequency):
-            actor_loss, alpha_loss, alpha = self.actor.update(ob_no, critic)
+            if step % actor_update_frequency == 0:
+                for _ in range(num_actor_updates_per_agent_update):
+                    actor_loss, alpha_loss, alpha = actor.update(ob_no, critic)
 
         # 4. gather losses for logging
         loss = OrderedDict()

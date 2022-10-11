@@ -38,7 +38,7 @@ class MLPPolicySAC(MLPPolicy):
     @property
     def alpha(self):
         # TODO: Formulate entropy term
-        return torch.exp(self.log_alpha).detach()
+        return torch.exp(self.log_alpha)
 
     def get_action(self, obs: np.ndarray, sample=True) -> np.ndarray:
         # TODO: return sample from distribution if sampling
@@ -59,7 +59,7 @@ class MLPPolicySAC(MLPPolicy):
             action_pt = action_distribution.mean
 
         # Convert our output action into a form usable by downstream
-        action = ptu.to_numpy(action_pt)
+        action = ptu.to_numpy(action_pt.squeeze())
 
         # TODO return the action that the policy prescribes
         return action
@@ -84,7 +84,8 @@ class MLPPolicySAC(MLPPolicy):
 
         # Calculate new action distribution from old
         loc = self.mean_net(observation)
-        action_distribution = SquashedNormal(loc, log_std)
+        std = torch.exp(log_std)
+        action_distribution = SquashedNormal(loc, std)
 
         return action_distribution
 
@@ -105,19 +106,19 @@ class MLPPolicySAC(MLPPolicy):
         alpha_optimizer.zero_grad()
 
         # Retrieve model output action distribution
-        model_action_distribution = self(obs)
-        action = self.get_action(obs)
+        action_distribution = self(obs)
+        action = action_distribution.sample()
+        action_log_probs = action_distribution.log_prob(action).squeeze()
 
         # Calculate Q values using critic
         Q1, Q2 = critic(obs, action)
         Q_values = torch.minimum(Q1, Q2).detach()
 
         # Calculate loss
-        log_prob_loss_by_sample = - alpha * model_action_distribution.log_prob(action)
-        actor_loss_by_sample = log_prob_loss_by_sample - Q_values
-        actor_loss = actor_loss_by_sample.sum()
-        alpha_loss_by_sample = log_prob_loss_by_sample - alpha * target_entropy
-        alpha_loss = alpha_loss_by_sample.sum()
+        actor_loss_by_sample = alpha.detach() * action_log_probs - Q_values
+        actor_loss = actor_loss_by_sample.mean()
+        alpha_loss_by_sample = - alpha * action_log_probs.detach() - alpha * target_entropy
+        alpha_loss = alpha_loss_by_sample.mean()
 
         # Update parameters
         actor_loss.backward()
@@ -125,4 +126,4 @@ class MLPPolicySAC(MLPPolicy):
         actor_optimizer.step()
         alpha_optimizer.step()
 
-        return ptu.to_numpy(actor_loss), ptu.to_numpy(alpha_loss), self.alpha
+        return ptu.to_numpy(actor_loss), ptu.to_numpy(alpha_loss), alpha
