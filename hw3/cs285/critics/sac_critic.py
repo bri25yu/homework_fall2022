@@ -64,8 +64,8 @@ class SACCritic(nn.Module, BaseCritic):
         # Concatenate obs and action
         Q_input = torch.concat((obs, action), dim=1)
 
-        Q_value_1 = Q1(Q_input).squeeze()
-        Q_value_2 = Q2(Q_input).squeeze()
+        Q_value_1 = Q1(Q_input)
+        Q_value_2 = Q2(Q_input)
 
         values = (Q_value_1, Q_value_2)
 

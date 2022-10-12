@@ -7,6 +7,7 @@ from cs285.critics.bootstrapped_continuous_critic import \
 from cs285.infrastructure.replay_buffer import ReplayBuffer
 from cs285.infrastructure.utils import *
 from cs285.policies.MLP_policy import MLPPolicyAC
+from functools import reduce
 
 from cs285.infrastructure.sac_utils import soft_update_params
 from .base_agent import BaseAgent
@@ -79,18 +80,23 @@ class SACAgent(BaseAgent):
         next_action_distribution = actor(next_ob_no)
         next_action = next_action_distribution.sample()
         next_action_log_probs = next_action_distribution.log_prob(next_action)
-        next_action_log_probs = next_action_log_probs.detach()  # We don't want gradients to propogate to actor
 
         # Calculate target value
-        Q_target_tp1_1, Q_target_tp1_2 = critic_target(next_ob_no, ac_na)
-        Q_target_tp1 = torch.minimum(Q_target_tp1_1, Q_target_tp1_2).detach()
-        target_value = Q_target_tp1 - alpha * next_action_log_probs
+        Q_target_tp1_values = critic_target(next_ob_no, next_action)
+        Q_target_tp1 = reduce(torch.minimum, Q_target_tp1_values)
+        target_value = Q_target_tp1 - alpha * next_action_log_probs.squeeze()
         target_value = target_value.squeeze()  # Squeeze to 1D
+
+        # Calculate Q_target
         Q_target = re_n + gamma * (1 - terminal_n) * target_value
+        Q_target = Q_target.detach()
+        assert Q_target.size() == re_n.size()
 
         # Calculate critic loss
-        Q1, Q2 = critic(ob_no, ac_na)
-        critic_loss = loss_fn(Q1.squeeze(), Q_target) + loss_fn(Q2.squeeze(), Q_target)
+        Q_values = critic(ob_no, ac_na)
+        assert all(Q.size() == Q_target.size() for Q in Q_values)
+        critic_losses = [loss_fn(Q, Q_target) for Q in Q_values]
+        critic_loss = reduce(torch.Tensor.add, critic_losses)
 
         # Update parameters
         critic_loss.backward()
@@ -108,31 +114,28 @@ class SACAgent(BaseAgent):
         critic_target = self.critic_target
         critic_tau = self.critic_tau
         actor = self.actor
-
-        # TODO 
-        # 1. Implement the following pseudocode:
-        # for agent_params['num_critic_updates_per_agent_update'] steps,
-        #     update the critic
+        current_training_step = self.training_step
 
         # Setup logging vars
-        critic_loss = None
-        actor_loss, alpha_loss, alpha = None, None, None
+        critic_loss = actor_loss = alpha_loss = alpha = None
 
-        for step in range(num_critic_updates_per_agent_update):
-            if step % critic_target_update_frequency == 0:
-                soft_update_params(critic, critic_target, critic_tau)
-
+        # 1. Implement the following pseudocode:
+        # for agent_params['num_critic_updates_per_agent_update'] steps,
+        for _ in range(num_critic_updates_per_agent_update):
+            # update the critic
             critic_loss = self.update_critic(ob_no, ac_na, next_ob_no, re_n, terminal_n)
 
         # 2. Softly update the target every critic_target_update_frequency (HINT: look at sac_utils)
+        if current_training_step % critic_target_update_frequency == 0:
+            soft_update_params(critic, critic_target, critic_tau)
 
         # 3. Implement following pseudocode:
         # If you need to update actor
-        # for agent_params['num_actor_updates_per_agent_update'] steps,
-        #     update the actor
-            if step % actor_update_frequency == 0:
-                for _ in range(num_actor_updates_per_agent_update):
-                    actor_loss, alpha_loss, alpha = actor.update(ob_no, critic)
+        if current_training_step % actor_update_frequency == 0:
+            # for agent_params['num_actor_updates_per_agent_update'] steps,
+            for _ in range(num_actor_updates_per_agent_update):
+                # update the actor
+                actor_loss, alpha_loss, alpha = actor.update(ob_no, critic)
 
         # 4. gather losses for logging
         loss = OrderedDict()
@@ -140,6 +143,9 @@ class SACAgent(BaseAgent):
         loss['Actor_Loss'] = actor_loss
         loss['Alpha_Loss'] = alpha_loss
         loss['Temperature'] = alpha
+
+        # Record that this action has been taken
+        self.training_step += 1
 
         return loss
 

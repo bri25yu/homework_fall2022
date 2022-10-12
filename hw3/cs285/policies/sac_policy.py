@@ -59,7 +59,7 @@ class MLPPolicySAC(MLPPolicy):
             action_pt = action_distribution.mean
 
         # Convert our output action into a form usable by downstream
-        action = ptu.to_numpy(action_pt.squeeze())
+        action = ptu.to_numpy(action_pt)
 
         # TODO return the action that the policy prescribes
         return action
@@ -105,19 +105,23 @@ class MLPPolicySAC(MLPPolicy):
         actor_optimizer.zero_grad()
         alpha_optimizer.zero_grad()
 
-        # Retrieve model output action distribution
+        # Get action and log probs
         action_distribution = self(obs)
         action = action_distribution.sample()
-        action_log_probs = action_distribution.log_prob(action).squeeze()
+        action_log_probs = action_distribution.log_prob(action)
 
         # Calculate Q values using critic
         Q1, Q2 = critic(obs, action)
-        Q_values = torch.minimum(Q1, Q2).detach()
+        Q_values = ((Q1 + Q2) / 2)  # Using mean to match the paper implementation
 
-        # Calculate loss
-        actor_loss_by_sample = alpha.detach() * action_log_probs - Q_values
+        # Calculate actor loss
+        actor_loss_by_sample = alpha.detach() * action_log_probs - Q_values.detach()
+        assert actor_loss_by_sample.size() == Q_values.size()
         actor_loss = actor_loss_by_sample.mean()
-        alpha_loss_by_sample = - alpha * action_log_probs.detach() - alpha * target_entropy
+
+        # Calculate alpha loss
+        alpha_loss_by_sample = - alpha * (action_log_probs + target_entropy).detach()
+        assert alpha_loss_by_sample.size() == action_log_probs.size()
         alpha_loss = alpha_loss_by_sample.mean()
 
         # Update parameters
