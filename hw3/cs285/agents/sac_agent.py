@@ -77,14 +77,12 @@ class SACAgent(BaseAgent):
         critic_optimizer.zero_grad()
 
         # Get next action probs
-        next_action_distribution = actor(next_ob_no)
-        next_action = next_action_distribution.sample()
-        next_action_log_probs = next_action_distribution.log_prob(next_action)
+        next_action, next_action_log_probs = actor(next_ob_no)
 
         # Calculate target value
         Q_target_tp1_values = critic_target(next_ob_no, next_action)
         Q_target_tp1 = reduce(torch.minimum, Q_target_tp1_values)
-        target_value = Q_target_tp1 - alpha * next_action_log_probs.squeeze()
+        target_value = Q_target_tp1.squeeze() - alpha * next_action_log_probs.squeeze()
         target_value = target_value.squeeze()  # Squeeze to 1D
 
         # Calculate Q_target
@@ -94,6 +92,7 @@ class SACAgent(BaseAgent):
 
         # Calculate critic loss
         Q_values = critic(ob_no, ac_na)
+        Q_values = [Q.squeeze() for Q in Q_values]
         assert all(Q.size() == Q_target.size() for Q in Q_values)
         critic_losses = [loss_fn(Q, Q_target) for Q in Q_values]
         critic_loss = reduce(torch.Tensor.add, critic_losses)

@@ -52,11 +52,7 @@ class MLPPolicySAC(MLPPolicy):
         obs_pt = ptu.from_numpy(observation)
 
         # Run our model
-        action_distribution = self(obs_pt)
-        if sample:
-            action_pt = action_distribution.sample()
-        else:
-            action_pt = action_distribution.mean
+        action_pt, _ = self(obs_pt)
 
         # Convert our output action into a form usable by downstream
         action = ptu.to_numpy(action_pt)
@@ -78,16 +74,31 @@ class MLPPolicySAC(MLPPolicy):
         # Retrieve relevant objects from self
         log_std = self.logstd
         log_std_min, log_std_max = self.log_std_bounds
+        action_min, action_max = self.action_range
+        ac_dim = self.ac_dim
 
         # Clip log_std
         log_std = log_std.clip(log_std_min, log_std_max)
 
-        # Calculate new action distribution from old
+        # Calculate squashed action and log probs
         loc = self.mean_net(observation)
-        std = torch.exp(log_std)
-        action_distribution = SquashedNormal(loc, std)
+        std = torch.exp(log_std) * torch.ones_like(loc)
+        squashed_action_distribution = SquashedNormal(loc, std)
+        squashed_action: torch.Tensor = squashed_action_distribution.sample()
+        assert loc.size()[0] == squashed_action.size()[0]
+        assert squashed_action.size()[1] == ac_dim
+        log_probs = squashed_action_distribution.log_prob(squashed_action)
+        assert log_probs.size()[0] == 1
 
-        return action_distribution
+        # Calculate action bounds
+        action_width = (action_max - action_min) / 2
+        action_offset = (action_max + action_min) / 2
+
+        # Rescale action to action range
+        action = squashed_action * action_width + action_offset
+        assert action.size() == squashed_action.size()
+
+        return action, log_probs
 
     def update(self, obs, critic):
         # TODO Update actor network and entropy regularizer
@@ -106,9 +117,7 @@ class MLPPolicySAC(MLPPolicy):
         alpha_optimizer.zero_grad()
 
         # Get action and log probs
-        action_distribution = self(obs)
-        action = action_distribution.sample()
-        action_log_probs = action_distribution.log_prob(action)
+        action, action_log_probs = self(obs)
 
         # Calculate Q values using critic
         Q1, Q2 = critic(obs, action)
@@ -130,4 +139,4 @@ class MLPPolicySAC(MLPPolicy):
         actor_optimizer.step()
         alpha_optimizer.step()
 
-        return ptu.to_numpy(actor_loss), ptu.to_numpy(alpha_loss), alpha
+        return ptu.to_numpy(action.max()), ptu.to_numpy(action.min()), alpha
