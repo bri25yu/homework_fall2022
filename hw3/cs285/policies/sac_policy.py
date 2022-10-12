@@ -101,8 +101,9 @@ class MLPPolicySAC(MLPPolicy):
         squashed_action_distribution = SquashedNormal(loc, scale)
         squashed_action = squashed_action_distribution.sample()  # For the moment we use `sample` rather than `rsample`
         log_prob = squashed_action_distribution.log_prob(squashed_action)
+        log_prob = log_prob.sum(dim=1, keepdim=True)
         assert squashed_action.size() == (batch_size, action_dim)
-        assert log_prob.size() == (batch_size, action_dim)
+        assert log_prob.size() == (batch_size, 1)
 
         # Calculate parameters of action range
         action_range_width = (action_range_max - action_range_min) / 2
@@ -117,53 +118,3 @@ class MLPPolicySAC(MLPPolicy):
         action_mean = squashed_action_mean * action_range_width + action_range_offset
 
         return action, log_prob, action_mean
-
-    def update(self, obs, critic):
-        # TODO Update actor network and entropy regularizer
-        # return losses and alpha value
-
-        # Prepare inputs
-        obs = ptu.from_numpy(obs)
-        batch_size = obs.size()[0]
-
-        # Retrieve relevant objects from self
-        alpha = self.alpha
-        target_entropy = self.target_entropy
-        actor_optimizer = self.optimizer
-        alpha_optimizer = self.log_alpha_optimizer
-
-        # Setup optimizers for new update step
-        actor_optimizer.zero_grad()
-        alpha_optimizer.zero_grad()
-
-        # Calculate action and log_prob
-        action, log_prob, _ = self(obs)
-
-        # Calculate Q_values
-        Q1, Q2 = critic(obs, action)
-        Q = torch.minimum(Q1, Q2)
-        assert Q.size() == (batch_size, 1)
-
-        # Calculate usable log_prob per sample
-        log_prob_per_sample = log_prob.sum(dim=1)
-        assert log_prob_per_sample.size() == (batch_size,)
-
-        # Calculate actor loss
-        Q_squeezed = Q.squeeze()
-        assert Q_squeezed.size() == (batch_size,)
-        actor_loss_per_sample = alpha.detach() * log_prob_per_sample - Q_squeezed.detach()
-        assert actor_loss_per_sample.size() == (batch_size,)
-        actor_loss = actor_loss_per_sample.mean()
-
-        # Calculate alpha loss
-        alpha_loss_per_sample = - alpha * (log_prob_per_sample.detach() + target_entropy)
-        assert alpha_loss_per_sample.size() == (batch_size,)
-        alpha_loss = alpha_loss_per_sample.mean()
-
-        # Apply updates to parameters
-        actor_loss.backward()
-        alpha_loss.backward()
-        actor_optimizer.step()
-        alpha_optimizer.step()
-
-        return ptu.to_numpy(actor_loss), ptu.to_numpy(alpha_loss), alpha
