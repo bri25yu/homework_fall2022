@@ -55,53 +55,8 @@ class SACAgent(BaseAgent):
         # 1. Compute the target Q value. 
         # HINT: You need to use the entropy term (alpha)
         # 2. Get current Q estimates and calculate critic loss
-        # 3. Optimize the critic
-
-        # Retrieve relevant objects from self
-        actor = self.actor
-        alpha = actor.alpha.detach()
-        gamma = self.gamma
-        critic = self.critic
-        critic_target = self.critic_target
-        critic_optimizer = critic.optimizer
-        loss_fn = critic.loss
-
-        # Convert inputs to usable form
-        ob_no = ptu.from_numpy(ob_no)
-        ac_na = ptu.from_numpy(ac_na)
-        next_ob_no = ptu.from_numpy(next_ob_no)
-        re_n = ptu.from_numpy(re_n)
-        terminal_n = ptu.from_numpy(terminal_n)
-
-        # Reset optimizers
-        critic_optimizer.zero_grad()
-
-        # Get next action probs
-        next_action, next_action_log_probs = actor(next_ob_no)
-
-        # Calculate target value
-        Q_target_tp1_values = critic_target(next_ob_no, next_action)
-        Q_target_tp1 = reduce(torch.minimum, Q_target_tp1_values)
-        target_value = Q_target_tp1.squeeze() - alpha * next_action_log_probs.squeeze()
-        target_value = target_value.squeeze()  # Squeeze to 1D
-
-        # Calculate Q_target
-        Q_target = re_n + gamma * (1 - terminal_n) * target_value
-        Q_target = Q_target.detach()
-        assert Q_target.size() == re_n.size()
-
-        # Calculate critic loss
-        Q_values = critic(ob_no, ac_na)
-        Q_values = [Q.squeeze() for Q in Q_values]
-        assert all(Q.size() == Q_target.size() for Q in Q_values)
-        critic_losses = [loss_fn(Q, Q_target) for Q in Q_values]
-        critic_loss = reduce(torch.Tensor.add, critic_losses)
-
-        # Update parameters
-        critic_loss.backward()
-        critic_optimizer.step()
-
-        return ptu.to_numpy(critic_loss)
+        # 3. Optimize the critic  
+        return critic_loss
 
     def train(self, ob_no, ac_na, re_n, next_ob_no, terminal_n):
         # Retrieve relevant objects from self
