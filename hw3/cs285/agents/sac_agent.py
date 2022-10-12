@@ -2,19 +2,17 @@ from collections import OrderedDict
 
 import torch
 
-from cs285.critics.bootstrapped_continuous_critic import \
-    BootstrappedContinuousCritic
+import gym
+
+import cs285.infrastructure.pytorch_util as ptu
 from cs285.infrastructure.replay_buffer import ReplayBuffer
 from cs285.infrastructure.utils import *
-from cs285.policies.MLP_policy import MLPPolicyAC
-from functools import reduce
-
 from cs285.infrastructure.sac_utils import soft_update_params
-from .base_agent import BaseAgent
-import gym
+
+from cs285.agents.base_agent import BaseAgent
 from cs285.policies.sac_policy import MLPPolicySAC
 from cs285.critics.sac_critic import SACCritic
-import cs285.infrastructure.pytorch_util as ptu
+
 
 class SACAgent(BaseAgent):
     def __init__(self, env: gym.Env, agent_params):
@@ -56,7 +54,58 @@ class SACAgent(BaseAgent):
         # HINT: You need to use the entropy term (alpha)
         # 2. Get current Q estimates and calculate critic loss
         # 3. Optimize the critic  
-        return critic_loss
+
+        # Prepare inputs
+        ob_no = ptu.from_numpy(ob_no)
+        ac_na = ptu.from_numpy(ac_na)
+        next_ob_no = ptu.from_numpy(next_ob_no)
+        re_n = ptu.from_numpy(re_n)
+        terminal_n = ptu.from_numpy(terminal_n)
+
+        # Retrieve relevant objects from self
+        actor = self.actor
+        critic = self.critic
+        critic_target = self.critic_target
+        gamma = self.gamma
+        loss_fn = critic.loss
+        optimizer = critic.optimizer
+        batch_size = ob_no.size()[0]
+        alpha = actor.alpha
+
+        # Set up optimizer for this update step
+        optimizer.zero_grad()
+
+        # Calculate next action and next log prob
+        next_action, next_log_prob, _ = actor(next_ob_no)
+
+        # Calculate target Q value
+        target_Q1, target_Q2 = critic_target(next_ob_no, next_action)
+        target_Q = (target_Q1 + target_Q2) / 2
+        assert target_Q.size() == (batch_size, 1)
+
+        # Calculate target value
+        next_log_prob_per_sample = next_log_prob_per_sample.sum(dim=1)
+        assert next_log_prob_per_sample.size() == (batch_size,)
+        target = re_n + gamma * (1 - terminal_n) * (target_Q.squeeze() - alpha * next_log_prob)
+        assert target.size() == (batch_size,)
+
+        # Calculate current Q value
+        Q1, Q2 = critic(ob_no, ac_na)
+
+        # Calculate critic loss
+        target_detached = target.detach()
+        Q1_squeezed, Q2_squeezed = Q1.squeeze(), Q2.squeeze()
+        assert Q1_squeezed.size() == Q2_squeezed.size() == target_detached.size() == (batch_size,)
+        Q1_loss = loss_fn(Q1_squeezed, target_detached)
+        Q2_loss = loss_fn(Q2_squeezed, target_detached)
+
+        critic_loss = Q1_loss + Q2_loss
+
+        # Update parameters
+        critic_loss.backward()
+        optimizer.step()
+
+        return ptu.to_numpy(critic_loss)
 
     def train(self, ob_no, ac_na, re_n, next_ob_no, terminal_n):
         # Retrieve relevant objects from self
