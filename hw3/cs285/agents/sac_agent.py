@@ -84,9 +84,9 @@ class SACAgent(BaseAgent):
         assert target_Q.size() == (batch_size, 1)
 
         # Calculate target value
-        next_log_prob_per_sample = next_log_prob_per_sample.sum(dim=1)
+        next_log_prob_per_sample = next_log_prob.sum(dim=1)
         assert next_log_prob_per_sample.size() == (batch_size,)
-        target = re_n + gamma * (1 - terminal_n) * (target_Q.squeeze() - alpha * next_log_prob)
+        target = re_n + gamma * (1 - terminal_n) * (target_Q.squeeze() - alpha * next_log_prob_per_sample)
         assert target.size() == (batch_size,)
 
         # Calculate current Q value

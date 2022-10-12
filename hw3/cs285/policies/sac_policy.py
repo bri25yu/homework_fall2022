@@ -42,7 +42,12 @@ class MLPPolicySAC(MLPPolicy):
     def get_action(self, obs: np.ndarray, sample=True) -> np.ndarray:
         # TODO: return sample from distribution if sampling
         # if not sampling return the mean of the distribution 
-        
+
+        if len(obs.shape) > 1:
+            obs = obs
+        else:
+            obs = obs[None]
+
         # Prepare inputs
         obs = ptu.from_numpy(obs)
 
