@@ -99,7 +99,7 @@ class MLPPolicySAC(MLPPolicy):
 
         # Create our SquashedNormal action distribution
         squashed_action_distribution = SquashedNormal(loc, scale)
-        squashed_action = squashed_action_distribution.sample()  # For the moment we use `sample` rather than `rsample`
+        squashed_action = squashed_action_distribution.rsample()
         log_prob = squashed_action_distribution.log_prob(squashed_action)
         log_prob = log_prob.sum(dim=1, keepdim=True)
         assert squashed_action.size() == (batch_size, action_dim)
