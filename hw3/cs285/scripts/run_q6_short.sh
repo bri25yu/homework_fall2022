@@ -6,7 +6,7 @@ python cs285/scripts/run_hw3_sac.py \
     --exp_name q6b_sac_HalfCheetah \
     --discount 0.99 \
     --scalar_log_freq 1500 \
-    -n 2000000 \
+    -n 50000 \
     -l 2 \
     -s 256 \
     -b 1500 \

@@ -53,3 +53,14 @@ The actor-critic agent reaches the target performances of 150 on HalfCheetah and
 ![](report_resources/q5.png)
 
 <div style="page-break-after: always;"></div>
+
+
+### Q6
+
+See `scripts/run_q6.sh`
+
+The soft actor-critic agent reaches the target performances of 300 on HalfCheetah and 1000 on InvertedPendulum.
+
+![](report_resources/q6.png)
+
+<div style="page-break-after: always;"></div>

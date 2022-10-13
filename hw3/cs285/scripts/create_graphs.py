@@ -241,5 +241,28 @@ def q5():
     fig.savefig("report_resources/q5.png")
 
 
+def q6():
+    configs = {
+        "HalfCheetah environment": "q6b_sac_HalfCheetah",
+        "InvertedPendulum environment": "q6a_sac_InvertedPendulum",
+    }
+
+    rows, cols = 1, 2
+    fig, axs = plt.subplots(rows, cols, figsize=(10 * cols, 8 * rows))
+
+    for ax, (config_name, config_prefix) in zip(axs, configs.items()):
+        steps, returns = get_eval_averagereturns(config_prefix)
+
+        ax.plot(steps, returns)
+
+        ax.set_title(config_name)
+        ax.set_xlabel("Train iterations")
+        ax.set_ylabel("Eval return")
+
+    fig.suptitle(f"Validation of soft actor critic on different environments")
+    fig.tight_layout()
+    fig.savefig("report_resources/q6.png")
+
+
 if __name__ == "__main__":
-    q5()
+    q6()
