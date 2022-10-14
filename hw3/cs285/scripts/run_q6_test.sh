@@ -12,6 +12,6 @@ python cs285/scripts/run_hw3_sac.py \
     -s 256 \
     -b 1000 \
     -eb 2000 \
-    -lr 0.0003 \
+    -lr 1e-5 \
     --init_temperature 0.1 \
     --seed 1
