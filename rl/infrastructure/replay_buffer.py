@@ -17,6 +17,8 @@ class ReplayBuffer:
         action_shape = environment_info.action_shape
 
         self.indices = np.arange(size)
+        # We can use np.empty here without worrying about accessing empty data
+        # due to the specifics of our sampling alg
         self.observations = np.empty((size, trajectory_length, *observation_shape), dtype=np.float16)
         self.actions = np.empty((size, trajectory_length, *action_shape), dtype=np.float16)
         self.next_observations = np.empty((size, trajectory_length, *observation_shape), dtype=np.float16)

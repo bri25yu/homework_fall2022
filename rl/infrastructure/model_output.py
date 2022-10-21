@@ -8,5 +8,5 @@ __all__ = ["ModelOutput"]
 
 @dataclass
 class ModelOutput:
-    action: torch.Tensor
-    loss: torch.Tensor
+    actions: torch.Tensor    # a tensor of shape (batch_size, max_sequence_length, *action_shape)
+    loss: torch.Tensor      # a torch scalar

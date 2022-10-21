@@ -48,6 +48,7 @@ class TrainingPipelineBase(ABC):
         # Setup our environment, model, and relevant training objects
         env, environment_info = self.get_env()
         policy = self.get_policy()
+        policy = policy.to(device="cuda", dtype=torch.float16)
         optimizer = self.setup_optimizer(policy)
 
         for step in trange(train_steps, desc="Training agent"):
@@ -98,7 +99,7 @@ class TrainingPipelineBase(ABC):
         while True:
             trajectory_pt = BatchTrajectoriesPyTorch.from_trajectory(trajectory, policy.device)
             model_output: ModelOutput = policy(trajectory_pt)
-            action = model_output.action.detach().cpu().numpy()
+            action = model_output.actions[0, -1].detach().cpu().numpy()
 
             next_observation, reward, terminal, _ = env.step(action)
 

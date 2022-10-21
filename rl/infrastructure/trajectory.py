@@ -46,10 +46,10 @@ class Trajectory:
 
         return Trajectory(
             environment_info=environment_info,
-            observations=np.empty((trajectory_length, *observation_shape), dtype=np.float16),
-            actions=np.empty((trajectory_length, *action_shape), dtype=np.float16),
-            next_observations=np.empty((trajectory_length, *observation_shape), dtype=np.float16),
-            rewards=np.empty((trajectory_length, 1), dtype=np.float16),
+            observations=np.zeros((trajectory_length, *observation_shape), dtype=np.float16),
+            actions=np.zeros((trajectory_length, *action_shape), dtype=np.float16),
+            next_observations=np.zeros((trajectory_length, *observation_shape), dtype=np.float16),
+            rewards=np.zeros((trajectory_length, 1), dtype=np.float16),
             terminals=np.ones((trajectory_length, 1), dtype=bool),
         )
 
@@ -143,7 +143,11 @@ class BatchTrajectoriesPyTorch:
 
     @classmethod
     def from_batch_trajectories(cls, batch_trajectories: BatchTrajectories, device: torch.device) -> "BatchTrajectoriesPyTorch":
-        convert_property_to_pytorch = lambda s: torch.from_numpy(getattr(batch_trajectories, s)).to(device)
+        def convert_property_to_pytorch(property_name: str) -> torch.nn.Module:
+            property_np = getattr(batch_trajectories, property_name)
+            property_pt = torch.from_numpy(property_np).to(device)
+            property_pt.requires_grad = False
+            return property_pt
 
         return BatchTrajectoriesPyTorch(
             batch_size=batch_trajectories.batch_size,
