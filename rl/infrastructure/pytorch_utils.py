@@ -1,6 +1,14 @@
 from typing import Tuple
 
-from math import prod
+try:  # `prod` is a native python function starting with python 3.8
+    from math import prod
+except ImportError:
+    # For all previous versions, we define a custom prod function
+    from functools import reduce
+    from operator import mul
+
+
+    prod = lambda t: reduce(mul, t)
 
 import torch
 import torch.nn as nn
