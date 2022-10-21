@@ -1,5 +1,3 @@
-from typing import Union
-
 import torch
 import torch.nn as nn
 
@@ -10,9 +8,7 @@ __all__ = ["PolicyGradientBase"]
 
 
 class PolicyGradientBase(PolicyBase):
-    GAMMA: Union[None, float] = None
-
-    def __init__(self, environment_info: EnvironmentInfo) -> None:
+    def __init__(self, environment_info: EnvironmentInfo, gamma: float) -> None:
         super().__init__()
 
         self.mean_net = pytorch_utils.build_ffn(pytorch_utils.FFNConfig(
@@ -27,7 +23,6 @@ class PolicyGradientBase(PolicyBase):
 
         # Precompute gamma vector
         # gamma_vector_precomputed[i] = gamma ** i
-        gamma = self.GAMMA
         max_trajectory_length = environment_info.max_trajectory_length
         # gamma_vector_precomputed is of shape (max_trajectory_length, 1)
         self.gamma_vector_precomputed = nn.Parameter(
@@ -45,8 +40,8 @@ class PolicyGradientBase(PolicyBase):
         values = self.baseline(trajectories.observations)
         assert values.size() == q_vals.size()
 
-        actions_mean = self.mean_net(trajectories.observations)
-        actions_std = self.log_std.repeat(batch_size, max_sequence_length, *(1,) * action_dims)
+        actions_mean: torch.Tensor = self.mean_net(trajectories.observations)
+        actions_std = self.log_std.exp().repeat(batch_size, max_sequence_length, *(1,) * action_dims)
         assert actions_mean.size() == trajectories.actions.size()
         assert actions_std.size() == trajectories.actions.size()
 
@@ -60,8 +55,9 @@ class PolicyGradientBase(PolicyBase):
         advantages_unnormalized = q_vals - values
         advantages = nn.functional.layer_norm(advantages_unnormalized, (max_sequence_length, 1))
 
-        policy_loss = -action_log_probs * advantages.detach()
-        baseline_loss = nn.functional.mse_loss(values, q_vals)
+        timestep_mask = ~trajectories.terminals
+        policy_loss = -(action_log_probs * advantages.detach() * timestep_mask).sum()
+        baseline_loss = (((values - q_vals) ** 2) * timestep_mask).mean()
 
         total_loss = policy_loss + baseline_loss
 

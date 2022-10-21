@@ -9,7 +9,7 @@ from rl.infrastructure import PolicyBase, EnvironmentInfo
 
 class PolicyGradientExperimentBase(OffPolicyTrainingPipelineBase):
     def get_policy(self, environment_info: EnvironmentInfo) -> PolicyBase:
-        return PolicyGradientBase(environment_info)
+        return PolicyGradientBase(environment_info=environment_info, gamma=0.99)
 
 
 class PolicyGradientInvertedPendulumExperiment(PolicyGradientExperimentBase):

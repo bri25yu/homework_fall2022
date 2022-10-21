@@ -16,7 +16,10 @@ import torch.nn as nn
 from dataclasses import dataclass
 
 
-__all__ = ["FFNConfig", "CNNConfig", "build_ffn", "build_cnn", "build_log_std"]
+__all__ = ["TORCH_DEVICE", "FFNConfig", "CNNConfig", "build_ffn", "build_cnn", "build_log_std"]
+
+
+TORCH_DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
 
 
 def get_activation(activation_name: str) -> nn.Module:
@@ -74,8 +77,8 @@ def build_ffn(ffn_config: FFNConfig) -> nn.Module:
     for in_dim, out_dim, activation in zip(in_dims, out_dims, activations):
         layers.extend((nn.LayerNorm(in_dim), nn.Linear(in_dim, out_dim), get_activation(activation)))
 
-    input_reshape = ReshapeLayer(ffn_config.in_shape, flattened_in_dim)
-    output_reshape = ReshapeLayer(flattened_out_dim, ffn_config.out_shape)
+    input_reshape = ReshapeLayer(ffn_config.in_shape, (flattened_in_dim,))
+    output_reshape = ReshapeLayer((flattened_out_dim,), ffn_config.out_shape)
 
     return nn.Sequential(input_reshape, *layers, output_reshape)
 
@@ -84,5 +87,5 @@ def build_cnn(cnn_config: CNNConfig) -> nn.Module:
     raise NotImplementedError
 
 
-def build_log_std(shape: Tuple[int, ...]) -> nn.Module:
+def build_log_std(shape: Tuple[int, ...]) -> nn.Parameter:
     return nn.Parameter(torch.zeros(shape))

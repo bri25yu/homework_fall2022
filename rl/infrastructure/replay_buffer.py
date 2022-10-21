@@ -4,6 +4,7 @@ import numpy as np
 
 from rl.infrastructure.environment_info import EnvironmentInfo
 from rl.infrastructure.trajectory import Trajectory, BatchTrajectories
+from rl.infrastructure.constants import NP_FLOAT_DTYPE
 
 
 class ReplayBuffer:
@@ -19,10 +20,10 @@ class ReplayBuffer:
         self.indices = np.arange(size)
         # We can use np.empty here without worrying about accessing empty data
         # due to the specifics of our sampling alg
-        self.observations = np.empty((size, trajectory_length, *observation_shape), dtype=np.float16)
-        self.actions = np.empty((size, trajectory_length, *action_shape), dtype=np.float16)
-        self.next_observations = np.empty((size, trajectory_length, *observation_shape), dtype=np.float16)
-        self.rewards = np.empty((size, trajectory_length, 1), dtype=np.float16)
+        self.observations = np.empty((size, trajectory_length, *observation_shape), dtype=NP_FLOAT_DTYPE)
+        self.actions = np.empty((size, trajectory_length, *action_shape), dtype=NP_FLOAT_DTYPE)
+        self.next_observations = np.empty((size, trajectory_length, *observation_shape), dtype=NP_FLOAT_DTYPE)
+        self.rewards = np.empty((size, trajectory_length, 1), dtype=NP_FLOAT_DTYPE)
         self.terminals = np.ones((size, trajectory_length, 1), dtype=bool)
 
     def sample(self, batch_size: int) -> BatchTrajectories:
@@ -33,11 +34,11 @@ class ReplayBuffer:
         return BatchTrajectories(
             batch_size=batch_size,
             environment_info=self.environment_info,
-            observations=np.array(self.observations.take(batch_indices)),
-            actions=np.array(self.actions.take(batch_indices)),
-            next_observations=np.array(self.next_observations.take(batch_indices)),
-            rewards=np.array(self.rewards.take(batch_indices)),
-            terminals=np.array(self.terminals.take(batch_indices)),
+            observations=np.array(self.observations[batch_indices]),
+            actions=np.array(self.actions[batch_indices]),
+            next_observations=np.array(self.next_observations[batch_indices]),
+            rewards=np.array(self.rewards[batch_indices]),
+            terminals=np.array(self.terminals[batch_indices]),
         )
 
     def add_trajectories_to_buffer(self, trajectories: List[Trajectory]) -> None:

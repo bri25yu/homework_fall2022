@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Union
 
 from dataclasses import dataclass
 
@@ -6,7 +6,8 @@ import numpy as np
 
 import torch
 
-from rl.infrastructure import EnvironmentInfo
+from rl.infrastructure.environment_info import EnvironmentInfo
+from rl.infrastructure.constants import NP_FLOAT_DTYPE, TORCH_FLOAT_DTYPE
 
 
 __all__ = ["Trajectory", "BatchTrajectories", "BatchTrajectoriesPyTorch"]
@@ -32,26 +33,31 @@ class Trajectory:
         assert self.rewards.shape == (max_trajectory_length, 1)
         assert self.terminals.shape == (max_trajectory_length, 1)
 
-        assert self.observations.dtype == np.float16
-        assert self.actions.dtype == np.float16
-        assert self.next_observations.dtype == np.float16
-        assert self.rewards.dtype == np.float16
+        assert self.observations.dtype == NP_FLOAT_DTYPE
+        assert self.actions.dtype == NP_FLOAT_DTYPE
+        assert self.next_observations.dtype == NP_FLOAT_DTYPE
+        assert self.rewards.dtype == NP_FLOAT_DTYPE
         assert self.terminals.dtype == bool
 
     @classmethod
-    def create(cls, environment_info: EnvironmentInfo) -> "Trajectory":
+    def create(cls, environment_info: EnvironmentInfo, initial_observation: Union[None, np.ndarray]=None) -> "Trajectory":
         trajectory_length = environment_info.max_trajectory_length
         observation_shape = environment_info.observation_shape
         action_shape = environment_info.action_shape
 
-        return Trajectory(
+        trajectory = Trajectory(
             environment_info=environment_info,
-            observations=np.zeros((trajectory_length, *observation_shape), dtype=np.float16),
-            actions=np.zeros((trajectory_length, *action_shape), dtype=np.float16),
-            next_observations=np.zeros((trajectory_length, *observation_shape), dtype=np.float16),
-            rewards=np.zeros((trajectory_length, 1), dtype=np.float16),
+            observations=np.zeros((trajectory_length, *observation_shape), dtype=NP_FLOAT_DTYPE),
+            actions=np.zeros((trajectory_length, *action_shape), dtype=NP_FLOAT_DTYPE),
+            next_observations=np.zeros((trajectory_length, *observation_shape), dtype=NP_FLOAT_DTYPE),
+            rewards=np.zeros((trajectory_length, 1), dtype=NP_FLOAT_DTYPE),
             terminals=np.ones((trajectory_length, 1), dtype=bool),
         )
+
+        if initial_observation is not None:
+            trajectory.observations[0] = initial_observation
+
+        return trajectory
 
     def update(
         self, index: int, observation: np.ndarray, action: np.ndarray, next_observation: np.ndarray, reward: float, terminal: bool
@@ -90,10 +96,10 @@ class BatchTrajectories:
         assert self.rewards.shape == (batch_size, max_trajectory_length, 1)
         assert self.terminals.shape == (batch_size, max_trajectory_length, 1)
 
-        assert self.observations.dtype == np.float16
-        assert self.actions.dtype == np.float16
-        assert self.next_observations.dtype == np.float16
-        assert self.rewards.dtype == np.float16
+        assert self.observations.dtype == NP_FLOAT_DTYPE
+        assert self.actions.dtype == NP_FLOAT_DTYPE
+        assert self.next_observations.dtype == NP_FLOAT_DTYPE
+        assert self.rewards.dtype == NP_FLOAT_DTYPE
         assert self.terminals.dtype == bool
 
     @classmethod
@@ -135,10 +141,10 @@ class BatchTrajectoriesPyTorch:
         assert self.rewards.size() == (batch_size, max_trajectory_length, 1)
         assert self.terminals.size() == (batch_size, max_trajectory_length, 1)
 
-        assert self.observations.dtype == torch.float16
-        assert self.actions.dtype == torch.float16
-        assert self.next_observations.dtype == torch.float16
-        assert self.rewards.dtype == torch.float16
+        assert self.observations.dtype == TORCH_FLOAT_DTYPE
+        assert self.actions.dtype == TORCH_FLOAT_DTYPE
+        assert self.next_observations.dtype == TORCH_FLOAT_DTYPE
+        assert self.rewards.dtype == TORCH_FLOAT_DTYPE
         assert self.terminals.dtype == torch.bool
 
     @classmethod

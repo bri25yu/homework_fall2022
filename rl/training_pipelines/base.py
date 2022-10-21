@@ -4,11 +4,10 @@ from abc import ABC, abstractmethod
 
 import os
 
-from tqdm import trange
+from tqdm.notebook import trange
 
 import numpy as np
 
-import torch
 from torch.optim import AdamW, Optimizer
 
 from tensorboardX import SummaryWriter
@@ -16,7 +15,10 @@ from tensorboardX import SummaryWriter
 from gym import Env
 
 from rl import OUTPUT_DIR
-from rl.infrastructure import EnvironmentInfo, ModelOutput, Trajectory, BatchTrajectoriesPyTorch, PolicyBase
+from rl.infrastructure import (
+    EnvironmentInfo, ModelOutput, Trajectory, BatchTrajectoriesPyTorch, PolicyBase, pytorch_utils
+)
+from rl.infrastructure.constants import TORCH_FLOAT_DTYPE
 
 
 class TrainingPipelineBase(ABC):
@@ -48,7 +50,7 @@ class TrainingPipelineBase(ABC):
         # Setup our environment, model, and relevant training objects
         env, environment_info = self.get_env()
         policy = self.get_policy(environment_info)
-        policy = policy.to(device="cuda", dtype=torch.float16)
+        policy = policy.to(device=pytorch_utils.TORCH_DEVICE, dtype=TORCH_FLOAT_DTYPE)
         optimizer = self.setup_optimizer(policy)
 
         for step in trange(train_steps, desc="Training agent"):
@@ -83,7 +85,7 @@ class TrainingPipelineBase(ABC):
         eval_batch_size = self.EVAL_BATCH_SIZE
 
         returns = []
-        for _ in trange(eval_batch_size, desc="Evaluating agent"):
+        for _ in trange(eval_batch_size, desc="Evaluating agent", leave=False):
             trajectory = self.sample_single_trajectory(env, environment_info, policy)
             returns.append(np.sum(trajectory.rewards))
 
@@ -92,16 +94,17 @@ class TrainingPipelineBase(ABC):
         }
 
     def sample_single_trajectory(self, env: Env, environment_info: EnvironmentInfo, policy: PolicyBase):
-        trajectory = Trajectory.create(environment_info=environment_info)
+        observation, _ = env.reset()
 
-        observation = env.reset()
+        trajectory = Trajectory.create(environment_info=environment_info, initial_observation=observation)
         current_step = 0
         while True:
-            trajectory_pt = BatchTrajectoriesPyTorch.from_trajectory(trajectory, policy.device)
+            trajectory_pt = BatchTrajectoriesPyTorch.from_trajectory(trajectory, pytorch_utils.TORCH_DEVICE)
             model_output: ModelOutput = policy(trajectory_pt)
             action = model_output.actions[0, -1].detach().cpu().numpy()
+            assert action.shape == environment_info.action_shape
 
-            next_observation, reward, terminal, _ = env.step(action)
+            next_observation, reward, terminal, _, _ = env.step(action)
 
             current_step += 1
             terminal = terminal or (current_step >= environment_info.max_trajectory_length)
@@ -120,13 +123,13 @@ class TrainingPipelineBase(ABC):
 
     @property
     def experiment_output_dir(self) -> str:
-        return os.path.join(OUTPUT_DIR, self.name)
+        return os.path.join(OUTPUT_DIR, self.experiment_name)
 
     def log_to_tensorboard(self, log: Dict[str, Any], step: int) -> None:
         if not hasattr(self, "logger"):
             self.logger = SummaryWriter(log_dir=self.experiment_output_dir)
 
-        for key, value in log:
+        for key, value in log.items():
             self.logger.add_scalar(key, value, step)
 
         self.logger.flush()
