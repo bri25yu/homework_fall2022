@@ -4,6 +4,8 @@ from abc import ABC, abstractmethod
 
 import os
 
+import time
+
 from tqdm.notebook import trange
 
 import numpy as np
@@ -55,13 +57,17 @@ class TrainingPipelineBase(ABC):
 
         for step in trange(train_steps, desc="Training agent"):
             # Take a training step
+            self.train_step_time -= time.time()
             model_output, train_logs = self.perform_single_train_step(env, environment_info, policy)
+            self.train_step_time += time.time()
 
             # Update our model
+            self.backprop_step_time -= time.time()
             loss = model_output.loss
             optimizer.zero_grad()
             loss.backward()
             optimizer.step()
+            self.backprop_step_time += time.time()
 
             if step % eval_steps == 0:
                 eval_logs = self.evaluate(env, environment_info, policy)
@@ -93,18 +99,22 @@ class TrainingPipelineBase(ABC):
             "eval_average_total_return": np.mean(returns),
         }
 
-    def sample_single_trajectory(self, env: Env, environment_info: EnvironmentInfo, policy: PolicyBase):
+    def sample_single_trajectory(self, env: Env, environment_info: EnvironmentInfo, policy: PolicyBase) -> Trajectory:
         observation, _ = env.reset()
 
         trajectory = Trajectory.create(environment_info=environment_info, initial_observation=observation)
         current_step = 0
         while True:
+            self.miscellaneous_operations_time -= time.time()
             trajectory_pt = BatchTrajectoriesPyTorch.from_trajectory(trajectory, pytorch_utils.TORCH_DEVICE)
             model_output: ModelOutput = policy(trajectory_pt)
             action = model_output.actions[0, -1].detach().cpu().numpy()
             assert action.shape == environment_info.action_shape
+            self.miscellaneous_operations_time += time.time()
 
+            self.env_step_time -= time.time()
             next_observation, reward, terminal, _, _ = env.step(action)
+            self.env_step_time += time.time()
 
             current_step += 1
             terminal = terminal or (current_step >= environment_info.max_trajectory_length)
@@ -125,11 +135,26 @@ class TrainingPipelineBase(ABC):
     def experiment_output_dir(self) -> str:
         return os.path.join(OUTPUT_DIR, self.experiment_name)
 
-    def log_to_tensorboard(self, log: Dict[str, Any], step: int) -> None:
-        if not hasattr(self, "logger"):
-            self.logger = SummaryWriter(log_dir=self.experiment_output_dir)
+    def reset_timers(self) -> None:
+        self.env_step_time = 0.0
+        self.train_step_time = 0.0
+        self.backprop_step_time = 0.0
+        self.miscellaneous_operations_time = 0.0
 
+    def setup_logging(self) -> None:
+        self.logger = SummaryWriter(log_dir=self.experiment_output_dir)
+        self.reset_timers()
+
+    def log_to_tensorboard(self, log: Dict[str, Any], step: int) -> None:
+        log.update({
+            "env_step_time": self.env_step_time,
+            "train_step_time": self.train_step_time,
+            "backprop_step_time": self.backprop_step_time,
+            "miscellaneous_operations_time": self.miscellaneous_operations_time,
+        })
         for key, value in log.items():
             self.logger.add_scalar(key, value, step)
+
+        self.reset_timers()
 
         self.logger.flush()
