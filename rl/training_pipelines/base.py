@@ -38,7 +38,7 @@ class TrainingPipelineBase(ABC):
         pass
 
     @abstractmethod
-    def get_policy(self) -> PolicyBase:
+    def get_policy(self, environment_info: EnvironmentInfo) -> PolicyBase:
         pass
 
     def run(self) -> None:
@@ -47,7 +47,7 @@ class TrainingPipelineBase(ABC):
 
         # Setup our environment, model, and relevant training objects
         env, environment_info = self.get_env()
-        policy = self.get_policy()
+        policy = self.get_policy(environment_info)
         policy = policy.to(device="cuda", dtype=torch.float16)
         optimizer = self.setup_optimizer(policy)
 

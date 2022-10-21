@@ -6,6 +6,9 @@ import torch.nn as nn
 from rl.infrastructure import BatchTrajectoriesPyTorch, EnvironmentInfo, ModelOutput, PolicyBase, pytorch_utils
 
 
+__all__ = ["PolicyGradientBase"]
+
+
 class PolicyGradientBase(PolicyBase):
     GAMMA: Union[None, float] = None
 
