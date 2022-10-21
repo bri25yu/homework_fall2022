@@ -1,0 +1,3 @@
+torch==1.12.1
+tensorboardX==2.5.1
+gym[mujoco,box2d,atari,accept-rom-license]==0.26.2
