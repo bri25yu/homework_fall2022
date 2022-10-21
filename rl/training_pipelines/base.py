@@ -54,6 +54,7 @@ class TrainingPipelineBase(ABC):
         policy = self.get_policy(environment_info)
         policy = policy.to(device=pytorch_utils.TORCH_DEVICE, dtype=TORCH_FLOAT_DTYPE)
         optimizer = self.setup_optimizer(policy)
+        self.setup_logging()
 
         for step in trange(train_steps, desc="Training agent"):
             # Take a training step
