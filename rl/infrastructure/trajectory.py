@@ -24,16 +24,25 @@ class BatchTrajectory:
     rewards: torch.Tensor             # Shape: (batch_size, trajectory_length, 1)
     terminals: torch.Tensor           # Shape: (batch_size, trajectory_length, 1). 1 if terminal, 0 otherwise
 
-    def __init__(self, *args, **kwargs) -> None:
-        super().__init__(*args, **kwargs)
-
+    def __post_init__(self) -> None:
         self.to_device(self.device)
+
+        batch_size = self.batch_size
+        max_trajectory_length = self.environment_info.max_trajectory_length
+        observation_shape = self.environment_info.observation_shape
+        action_shape = self.environment_info.action_shape
+
+        assert self.observations.size() == (batch_size, max_trajectory_length, *observation_shape)
+        assert self.actions.size() == (batch_size, max_trajectory_length, *action_shape)
+        assert self.next_observations.size() == (batch_size, max_trajectory_length, *observation_shape)
+        assert self.rewards.size() == (batch_size, max_trajectory_length, 1)
+        assert self.terminals.size() == (batch_size, max_trajectory_length, 1)
 
     @classmethod
     def create(
         cls, environment_info: EnvironmentInfo, batch_size: int, device: str, initial_observation: Union[None, np.ndarray]=None
     ) -> "BatchTrajectory":
-        trajectory_length = environment_info.max_trajectory_length
+        max_trajectory_length = environment_info.max_trajectory_length
         observation_shape = environment_info.observation_shape
         action_shape = environment_info.action_shape
 
@@ -41,15 +50,16 @@ class BatchTrajectory:
             environment_info=environment_info,
             batch_size=batch_size,
             device=device,
-            observations=np.zeros((trajectory_length, *observation_shape), dtype=TORCH_FLOAT_DTYPE),
-            actions=np.zeros((trajectory_length, *action_shape), dtype=TORCH_FLOAT_DTYPE),
-            next_observations=np.zeros((trajectory_length, *observation_shape), dtype=TORCH_FLOAT_DTYPE),
-            rewards=np.zeros((trajectory_length, 1), dtype=TORCH_FLOAT_DTYPE),
-            terminals=np.ones((trajectory_length, 1), dtype=torch.bool),
+            observations=torch.zeros((batch_size, max_trajectory_length, *observation_shape), dtype=TORCH_FLOAT_DTYPE),
+            actions=torch.zeros((batch_size, max_trajectory_length, *action_shape), dtype=TORCH_FLOAT_DTYPE),
+            next_observations=torch.zeros((batch_size, max_trajectory_length, *observation_shape), dtype=TORCH_FLOAT_DTYPE),
+            rewards=torch.zeros((batch_size, max_trajectory_length, 1), dtype=TORCH_FLOAT_DTYPE),
+            terminals=torch.ones((batch_size, max_trajectory_length, 1), dtype=torch.bool),
         )
 
         if initial_observation is not None:
-            trajectory.observations[0] = torch.from_numpy(initial_observation)
+            assert batch_size == 1
+            trajectory.observations[0, 0] = torch.from_numpy(initial_observation)
 
         return trajectory
 
@@ -62,11 +72,11 @@ class BatchTrajectory:
         assert action.shape == self.environment_info.action_shape
         assert next_observation.shape == self.environment_info.observation_shape
 
-        self.observations[index] = torch.from_numpy(observation)
-        self.actions[index] = torch.from_numpy(action)
-        self.next_observations[index] = torch.from_numpy(next_observation)
-        self.rewards[index] = reward
-        self.terminals[index] = terminal
+        self.observations[0, index] = torch.from_numpy(observation)
+        self.actions[0, index] = torch.from_numpy(action)
+        self.next_observations[0, index] = torch.from_numpy(next_observation)
+        self.rewards[0, index] = reward
+        self.terminals[0, index] = terminal
 
     def to_device(self, device: str) -> None:
         self.device = device

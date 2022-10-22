@@ -10,6 +10,7 @@ from tqdm.notebook import trange
 
 import numpy as np
 
+import torch
 from torch.optim import AdamW, Optimizer
 
 from tensorboardX import SummaryWriter
@@ -92,7 +93,7 @@ class TrainingPipelineBase(ABC):
         returns = []
         for _ in trange(eval_batch_size, desc="Evaluating agent", leave=False):
             trajectory = self.sample_single_trajectory(env, environment_info, policy)
-            returns.append(np.sum(trajectory.rewards))
+            returns.append(torch.sum(trajectory.rewards).item())
 
         return {
             "eval_average_total_return": np.mean(returns),

@@ -10,20 +10,23 @@ class ReplayBuffer:
     DEVICE = "cpu"
 
     def __init__(self, environment_info: EnvironmentInfo, size: int=10000) -> None:
-        self.environment_info = environment_info
         self.num_examples_stored = 0
 
         self.indices = torch.arange(size)
         self.trajectories = BatchTrajectory.create(environment_info, size, self.DEVICE)
 
+    @property
+    def size(self) -> int:
+        return self.trajectories.batch_size
+
     def sample(self, batch_size: int) -> BatchTrajectory:
         assert batch_size <= self.num_examples_stored
 
-        batch_indices = torch.randint(0, self.num_examples_stored, batch_size)
+        batch_indices = torch.randint(0, self.num_examples_stored, (batch_size,))
 
         return BatchTrajectory(
             batch_size=batch_size,
-            environment_info=self.environment_info,
+            environment_info=self.trajectories.environment_info,
             device=self.DEVICE,
             observations=torch.Tensor(self.trajectories.observations[batch_indices]),
             actions=torch.Tensor(self.trajectories.actions[batch_indices]),
