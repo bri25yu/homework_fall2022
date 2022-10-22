@@ -145,7 +145,8 @@ class TrainingPipelineBase(ABC):
         self.policy_forward_time = 0.0
 
     def setup_logging(self) -> None:
-        self.logger = SummaryWriter(log_dir=self.experiment_output_dir)
+        log_dir = os.path.join(self.experiment_output_dir, f"run{time.time()}")
+        self.logger = SummaryWriter(log_dir=log_dir)
         self.reset_timers()
 
     def log_to_tensorboard(self, log: Dict[str, Any], step: int) -> None:
