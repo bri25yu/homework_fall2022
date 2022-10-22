@@ -18,7 +18,7 @@ from gym import Env
 
 from rl import OUTPUT_DIR
 from rl.infrastructure import (
-    EnvironmentInfo, ModelOutput, Trajectory, BatchTrajectoriesPyTorch, PolicyBase, pytorch_utils
+    EnvironmentInfo, ModelOutput, PolicyBase, pytorch_utils, BatchTrajectory
 )
 from rl.infrastructure.constants import TORCH_FLOAT_DTYPE
 
@@ -75,7 +75,7 @@ class TrainingPipelineBase(ABC):
             else:
                 eval_logs = dict()
 
-            logs = {**train_logs, **eval_logs}
+            logs = {**train_logs, **eval_logs, **(model_output.logs if model_output.logs else {})}
             self.log_to_tensorboard(logs, step)
 
         # Perform one final eval if the last step wasn't an eval step
@@ -100,18 +100,20 @@ class TrainingPipelineBase(ABC):
             "eval_average_total_return": np.mean(returns),
         }
 
-    def sample_single_trajectory(self, env: Env, environment_info: EnvironmentInfo, policy: PolicyBase) -> Trajectory:
+    def sample_single_trajectory(self, env: Env, environment_info: EnvironmentInfo, policy: PolicyBase) -> BatchTrajectory:
         observation, _ = env.reset()
 
-        trajectory = Trajectory.create(environment_info=environment_info, initial_observation=observation)
+        trajectory = BatchTrajectory.create(
+            environment_info=environment_info, batch_size=1, device=pytorch_utils.TORCH_DEVICE, initial_observation=observation,
+        )
         current_step = 0
         while True:
-            self.miscellaneous_operations_time -= time.time()
-            trajectory_pt = BatchTrajectoriesPyTorch.from_trajectory(trajectory, pytorch_utils.TORCH_DEVICE)
-            model_output: ModelOutput = policy(trajectory_pt)
+            self.policy_forward_time -= time.time()
+            model_output: ModelOutput = policy(trajectory)
+            self.policy_forward_time += time.time()
+
             action = model_output.actions[0, -1].detach().cpu().numpy()
             assert action.shape == environment_info.action_shape
-            self.miscellaneous_operations_time += time.time()
 
             self.env_step_time -= time.time()
             next_observation, reward, terminal, _, _ = env.step(action)
@@ -120,11 +122,13 @@ class TrainingPipelineBase(ABC):
             current_step += 1
             terminal = terminal or (current_step >= environment_info.max_trajectory_length)
 
-            trajectory.update(current_step, observation, action, next_observation, reward, terminal)
+            trajectory.update_from_numpy(current_step, observation, action, next_observation, reward, terminal)
             observation = next_observation
 
             if terminal:
                 break
+
+        trajectory.to_device("cpu")
 
         return trajectory
 
@@ -140,7 +144,7 @@ class TrainingPipelineBase(ABC):
         self.env_step_time = 0.0
         self.train_step_time = 0.0
         self.backprop_step_time = 0.0
-        self.miscellaneous_operations_time = 0.0
+        self.policy_forward_time = 0.0
 
     def setup_logging(self) -> None:
         self.logger = SummaryWriter(log_dir=self.experiment_output_dir)
@@ -151,7 +155,7 @@ class TrainingPipelineBase(ABC):
             "env_step_time": self.env_step_time,
             "train_step_time": self.train_step_time,
             "backprop_step_time": self.backprop_step_time,
-            "miscellaneous_operations_time": self.miscellaneous_operations_time,
+            "policy_forward_time": self.policy_forward_time,
         })
         for key, value in log.items():
             self.logger.add_scalar(key, value, step)

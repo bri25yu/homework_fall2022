@@ -20,6 +20,7 @@ __all__ = ["TORCH_DEVICE", "FFNConfig", "CNNConfig", "build_ffn", "build_cnn", "
 
 
 TORCH_DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
+TORCH_FLOAT_DTYPE = torch.float32
 
 
 def get_activation(activation_name: str) -> nn.Module:
