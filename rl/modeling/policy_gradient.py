@@ -1,7 +1,9 @@
+import time
+
 import torch
 import torch.nn as nn
 
-from rl.infrastructure import BatchTrajectoriesPyTorch, EnvironmentInfo, ModelOutput, PolicyBase, pytorch_utils
+from rl.infrastructure import BatchTrajectory, EnvironmentInfo, ModelOutput, PolicyBase, pytorch_utils
 
 
 __all__ = ["PolicyGradientBase"]
@@ -30,12 +32,15 @@ class PolicyGradientBase(PolicyBase):
             requires_grad=False,
         )
 
-    def forward(self, trajectories: BatchTrajectoriesPyTorch) -> ModelOutput:
+    def forward(self, trajectories: BatchTrajectory) -> ModelOutput:
         batch_size = trajectories.batch_size
         max_sequence_length = trajectories.observations.size()[1]
         action_dims = len(trajectories.environment_info.action_shape)
+        logs = dict()
 
+        logs["q_vals_calculation_time"] = -time.time()
         q_vals = self._calculate_q_vals(trajectories.rewards)
+        logs["q_vals_calculation_time"] += time.time()
 
         values = self.baseline(trajectories.observations)
         assert values.size() == q_vals.size()
@@ -61,7 +66,10 @@ class PolicyGradientBase(PolicyBase):
 
         total_loss = policy_loss + baseline_loss
 
-        return ModelOutput(actions=actions, loss=total_loss)
+        logs["policy_loss"] = policy_loss.item()
+        logs["baseline_loss"] = baseline_loss.item()
+
+        return ModelOutput(actions=actions, loss=total_loss, logs=logs)
 
     def _calculate_q_vals(self, rewards: torch.Tensor) -> torch.Tensor:
         """

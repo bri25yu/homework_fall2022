@@ -20,7 +20,7 @@ from rl import OUTPUT_DIR
 from rl.infrastructure import (
     EnvironmentInfo, ModelOutput, PolicyBase, pytorch_utils, BatchTrajectory
 )
-from rl.infrastructure.constants import TORCH_FLOAT_DTYPE
+from rl.infrastructure.pytorch_utils import TORCH_FLOAT_DTYPE
 
 
 class TrainingPipelineBase(ABC):
@@ -63,12 +63,10 @@ class TrainingPipelineBase(ABC):
             self.train_step_time += time.time()
 
             # Update our model
-            self.backprop_step_time -= time.time()
             loss = model_output.loss
             optimizer.zero_grad()
             loss.backward()
             optimizer.step()
-            self.backprop_step_time += time.time()
 
             if step % eval_steps == 0:
                 eval_logs = self.evaluate(env, environment_info, policy)
@@ -143,7 +141,6 @@ class TrainingPipelineBase(ABC):
     def reset_timers(self) -> None:
         self.env_step_time = 0.0
         self.train_step_time = 0.0
-        self.backprop_step_time = 0.0
         self.policy_forward_time = 0.0
 
     def setup_logging(self) -> None:
@@ -154,7 +151,6 @@ class TrainingPipelineBase(ABC):
         log.update({
             "env_step_time": self.env_step_time,
             "train_step_time": self.train_step_time,
-            "backprop_step_time": self.backprop_step_time,
             "policy_forward_time": self.policy_forward_time,
         })
         for key, value in log.items():

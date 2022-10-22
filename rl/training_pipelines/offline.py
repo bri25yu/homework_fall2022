@@ -6,7 +6,7 @@ import torch.nn as nn
 
 from gym import Env
 
-from rl.infrastructure import EnvironmentInfo, ModelOutput, ReplayBuffer, BatchTrajectoriesPyTorch
+from rl.infrastructure import EnvironmentInfo, ModelOutput, ReplayBuffer, pytorch_utils
 from rl.training_pipelines.base import TrainingPipelineBase
 
 
@@ -26,7 +26,7 @@ class OfflineTrainingPipelineBase(TrainingPipelineBase):
             self.replay_buffer = self.get_replay_buffer(environment_info)
 
         batch_trajectories = self.replay_buffer.sample(batch_size)
-        batch_trajectories = BatchTrajectoriesPyTorch.from_batch_trajectories(batch_trajectories)
+        batch_trajectories.to_device(pytorch_utils.TORCH_DEVICE)
 
         model_output: ModelOutput = policy(batch_trajectories)
 

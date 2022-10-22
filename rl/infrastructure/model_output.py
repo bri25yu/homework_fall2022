@@ -10,6 +10,6 @@ __all__ = ["ModelOutput"]
 
 @dataclass
 class ModelOutput:
-    actions: torch.Tensor               # A tensor of shape (batch_size, max_sequence_length, *action_shape)
-    loss: torch.Tensor                  # A torch scalar
-    logs: Union[None, Dict[str, Any]]   # Optional logs
+    actions: torch.Tensor                       # A tensor of shape (batch_size, max_sequence_length, *action_shape)
+    loss: torch.Tensor                          # A torch scalar
+    logs: Union[None, Dict[str, Any]] = None    # Optional logs
