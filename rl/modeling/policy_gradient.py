@@ -38,10 +38,7 @@ class PolicyGradientBase(PolicyBase):
         action_dims = len(trajectories.environment_info.action_shape)
         logs = dict()
 
-        logs["q_vals_calculation_time"] = -time.time()
         q_vals = self._calculate_q_vals(trajectories.rewards)
-        logs["q_vals_calculation_time"] += time.time()
-
         values = self.baseline(trajectories.observations)
         assert values.size() == q_vals.size()
 
