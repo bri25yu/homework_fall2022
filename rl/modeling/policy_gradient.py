@@ -39,26 +39,39 @@ class PolicyGradientBase(PolicyBase):
         logs = dict()
         logs["total_forward_time"] = -time.time()
 
+        logs["q vals"] = -time.time()
         q_vals = self._calculate_q_vals(trajectories.rewards)
+        logs["q vals"] += time.time()
+        logs["baseline"] = -time.time()
         values = self.baseline(trajectories.observations)
+        logs["baseline"] += time.time()
         assert values.size() == q_vals.size()
 
+        logs["mean net"] = -time.time()
         actions_mean: torch.Tensor = self.mean_net(trajectories.observations)
+        logs["mean net"] += time.time()
+        logs["log std"] = -time.time()
         actions_std = self.log_std.exp().repeat(batch_size, max_sequence_length, *(1,) * action_dims)
+        logs["log std"] += time.time()
         assert actions_mean.size() == trajectories.actions.size()
         assert actions_std.size() == trajectories.actions.size()
 
-        logs["dist_creation_time"] = -time.time()
-        actions_dist = torch.distributions.Normal(actions_mean, actions_std)
-        logs["dist_creation_time"] += time.time()
-        logs["rsample_time"] = -time.time()
+        logs["normal"] = -time.time()
+        actions_dist = torch.distributions.Normal(actions_mean, actions_std, validate_args=False)
+        logs["normal"] += time.time()
+        logs["rsample"] = -time.time()
         actions: torch.Tensor = actions_dist.rsample()
-        logs["rsample_time"] += time.time()
+        logs["rsample"] += time.time()
         assert actions.size() == trajectories.actions.size()
 
+        logs["log prob"] = -time.time()
         action_log_probs: torch.Tensor = actions_dist.log_prob(actions)
+        logs["log prob"] += time.time()
+        logs["log prob sum"] = -time.time()
         action_log_probs = action_log_probs.sum(dim=2, keepdim=True)
+        logs["log prob sum"] += time.time()
 
+        logs["after log prob"] = -time.time()
         advantages_unnormalized = q_vals - values
         advantages = nn.functional.layer_norm(advantages_unnormalized, (max_sequence_length, 1))
 
@@ -67,9 +80,13 @@ class PolicyGradientBase(PolicyBase):
         baseline_loss = (((values - q_vals) ** 2) * timestep_mask).mean()
 
         total_loss = policy_loss + baseline_loss
+        logs["after log prob"] += time.time()
 
-        logs["policy_loss"] = policy_loss.item()
-        logs["baseline_loss"] = baseline_loss.item()
+        logs["loss items"] = -time.time()
+        logs["policy_loss"] = pytorch_utils.to_numpy(policy_loss)
+        logs["baseline_loss"] = pytorch_utils.to_numpy(baseline_loss)
+        logs["loss items"] += time.time()
+
         logs["total_forward_time"] += time.time()
 
         return ModelOutput(actions=actions, loss=total_loss, logs=logs)

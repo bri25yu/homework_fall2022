@@ -48,7 +48,7 @@ class OffPolicyTrainingPipelineBase(TrainingPipelineBase):
         model_output: ModelOutput = policy(batch_trajectories)
 
         train_log = {
-            "train_loss": model_output.loss.item(),
+            "train_loss": pytorch_utils.to_numpy(model_output.loss),
         }
 
         return model_output, train_log

@@ -16,11 +16,15 @@ import torch.nn as nn
 from dataclasses import dataclass
 
 
-__all__ = ["TORCH_DEVICE", "FFNConfig", "CNNConfig", "build_ffn", "build_cnn", "build_log_std"]
+__all__ = ["TORCH_DEVICE", "TORCH_FLOAT_DTYPE", "to_numpy", "FFNConfig", "CNNConfig", "build_ffn", "build_cnn", "build_log_std"]
 
 
 TORCH_DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
 TORCH_FLOAT_DTYPE = torch.float32
+
+
+def to_numpy(t: torch.Tensor) -> float:
+    return t.detach().to("cpu").numpy()
 
 
 def get_activation(activation_name: str) -> nn.Module:

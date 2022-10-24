@@ -93,7 +93,7 @@ class TrainingPipelineBase(ABC):
         returns = []
         for _ in trange(eval_batch_size, desc="Evaluating agent", leave=False):
             trajectory = self.sample_single_trajectory(env, environment_info, policy)
-            returns.append(torch.sum(trajectory.rewards).item())
+            returns.append(pytorch_utils.to_numpy(torch.sum(trajectory.rewards)))
 
         return {
             "eval_average_total_return": np.mean(returns),
