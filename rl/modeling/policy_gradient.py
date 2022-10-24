@@ -37,6 +37,7 @@ class PolicyGradientBase(PolicyBase):
         max_sequence_length = trajectories.observations.size()[1]
         action_dims = len(trajectories.environment_info.action_shape)
         logs = dict()
+        logs["total_forward_time"] = -time.time()
 
         q_vals = self._calculate_q_vals(trajectories.rewards)
         values = self.baseline(trajectories.observations)
@@ -47,8 +48,12 @@ class PolicyGradientBase(PolicyBase):
         assert actions_mean.size() == trajectories.actions.size()
         assert actions_std.size() == trajectories.actions.size()
 
+        logs["dist_creation_time"] = -time.time()
         actions_dist = torch.distributions.Normal(actions_mean, actions_std)
+        logs["dist_creation_time"] += time.time()
+        logs["rsample_time"] = -time.time()
         actions: torch.Tensor = actions_dist.rsample()
+        logs["rsample_time"] += time.time()
         assert actions.size() == trajectories.actions.size()
 
         action_log_probs: torch.Tensor = actions_dist.log_prob(actions)
@@ -58,13 +63,14 @@ class PolicyGradientBase(PolicyBase):
         advantages = nn.functional.layer_norm(advantages_unnormalized, (max_sequence_length, 1))
 
         timestep_mask = ~trajectories.terminals
-        policy_loss = -(action_log_probs * advantages.detach() * timestep_mask).sum()
+        policy_loss = -(action_log_probs * advantages.detach() * timestep_mask).sum() / batch_size
         baseline_loss = (((values - q_vals) ** 2) * timestep_mask).mean()
 
         total_loss = policy_loss + baseline_loss
 
         logs["policy_loss"] = policy_loss.item()
         logs["baseline_loss"] = baseline_loss.item()
+        logs["total_forward_time"] += time.time()
 
         return ModelOutput(actions=actions, loss=total_loss, logs=logs)
 
