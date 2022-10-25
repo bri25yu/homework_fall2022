@@ -2,12 +2,21 @@ from typing import Tuple
 
 from dataclasses import dataclass
 
+import numpy as np
+
 
 __all__ = ["EnvironmentInfo"]
 
 
 @dataclass
 class EnvironmentInfo:
-    max_trajectory_length: int
     observation_shape: Tuple[int, ...]
     action_shape: Tuple[int, ...]
+
+    @property
+    def observation_dim(self) -> int:
+        return np.prod(self.observation_shape)
+
+    @property
+    def action_dim(self) -> int:
+        return np.prod(self.action_shape)

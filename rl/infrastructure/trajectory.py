@@ -1,93 +1,126 @@
-from typing import Union
-
-from dataclasses import dataclass
-
 import numpy as np
 
 import torch
 
 from rl.infrastructure.environment_info import EnvironmentInfo
-from rl.infrastructure.pytorch_utils import TORCH_FLOAT_DTYPE
+from rl.infrastructure.pytorch_utils import TORCH_FLOAT_DTYPE, TORCH_DEVICE
 
 
-__all__ = ["BatchTrajectory"]
+__all__ = ["Trajectory"]
 
 
-@dataclass
-class BatchTrajectory:
-    environment_info: EnvironmentInfo
-    batch_size: int
-    device: str
-    observations: torch.Tensor          # Shape: (batch_size, trajectory_length, *observation_shape)
-    actions: torch.Tensor               # Shape: (batch_size, trajectory_length, *action_shape)
-    next_observations: torch.Tensor     # Shape: (batch_size, trajectory_length, *observation_shape)
-    rewards: torch.Tensor               # Shape: (batch_size, trajectory_length, 1)
-    mask: torch.Tensor                  # Shape: (batch_size, trajectory_length, 1). 1 if part of the trajectory, 0 otherwise
-
-    def __post_init__(self) -> None:
-        self.to_device(self.device)
-
-        batch_size = self.batch_size
-        max_trajectory_length = self.environment_info.max_trajectory_length
-        observation_shape = self.environment_info.observation_shape
-        action_shape = self.environment_info.action_shape
-
-        assert self.observations.size() == (batch_size, max_trajectory_length, *observation_shape)
-        assert self.actions.size() == (batch_size, max_trajectory_length, *action_shape)
-        assert self.next_observations.size() == (batch_size, max_trajectory_length, *observation_shape)
-        assert self.rewards.size() == (batch_size, max_trajectory_length, 1)
-        assert self.mask.size() == (batch_size, max_trajectory_length, 1)
-
+class Trajectory:
     @classmethod
-    def create(
-        cls, environment_info: EnvironmentInfo, batch_size: int, device: str, initial_observation: Union[None, np.ndarray]=None
-    ) -> "BatchTrajectory":
-        max_trajectory_length = environment_info.max_trajectory_length
-        observation_shape = environment_info.observation_shape
-        action_shape = environment_info.action_shape
+    def create(cls, environment_info: EnvironmentInfo, device: str, L: int) -> "Trajectory":
+        observation_dim = environment_info.observation_dim
+        action_dim = environment_info.action_dim
 
-        trajectory = BatchTrajectory(
-            environment_info=environment_info,
-            batch_size=batch_size,
-            device=device,
-            observations=torch.zeros((batch_size, max_trajectory_length, *observation_shape), dtype=TORCH_FLOAT_DTYPE),
-            actions=torch.zeros((batch_size, max_trajectory_length, *action_shape), dtype=TORCH_FLOAT_DTYPE),
-            next_observations=torch.zeros((batch_size, max_trajectory_length, *observation_shape), dtype=TORCH_FLOAT_DTYPE),
-            rewards=torch.zeros((batch_size, max_trajectory_length, 1), dtype=TORCH_FLOAT_DTYPE),
-            mask=torch.zeros((batch_size, max_trajectory_length, 1), dtype=torch.bool),
-        )
+        # Technically we can combine observation and next observation data
+        # but it's unnecessarily complicated so we just make a copy of the data
+        # !TODO reduce memory footprint of observation/next_observation
+        # We store the observations, actions, next_observations, and rewards in this array
+        data_dim = observation_dim + action_dim + observation_dim + 1
 
-        if initial_observation is not None:
-            assert batch_size == 1
-            trajectory.observations[0, 0] = torch.from_numpy(initial_observation)
+        _data = torch.zeros((L, data_dim), device=device, dtype=TORCH_FLOAT_DTYPE)
+        _terminals = torch.ones((L, 1), device=device, dtype=bool)
 
-        return trajectory
+        return Trajectory(environment_info=environment_info, L=L, _data=_data, _terminals=_terminals)
+
+    def __init__(
+        self, environment_info: EnvironmentInfo, L: int, _data: torch.Tensor, _terminals: torch.Tensor
+    ) -> None:
+        self.environment_info = environment_info
+        self.L = L
+
+        observation_dim = environment_info.observation_dim
+        action_dim = environment_info.action_dim
+
+        self._data = _data
+        self._terminals = _terminals
+
+        self.observations_slice = slice(0, observation_dim)
+        self.actions_slice = slice(self.observations_slice.stop, self.observations_slice.stop + action_dim)
+        self.next_observations_slice = slice(self.actions_slice.stop, self.actions_slice.stop + observation_dim)
+        self.rewards_slice = slice(self.next_observations_slice.stop, self.next_observations_slice.stop + 1)
+
+    @property
+    def observations(self) -> torch.Tensor:  # (L, *observation_shape)
+        return self._data[:, self.observations_slice].view(self.L, *self.environment_info.observation_shape)
+
+    @property
+    def actions(self) -> torch.Tensor:  # (L, *action_shape)
+        return self._data[:, self.actions_slice].view(self.L, *self.environment_info.action_shape)
+
+    @property
+    def next_observations(self) -> torch.Tensor:  # (L, observation_dim)
+        return self._data[:, self.next_observations_slice]
+
+    @property
+    def rewards(self) -> torch.Tensor:  # (L, 1)
+        return self._data[:, self.rewards_slice]
+
+    @property
+    def terminals(self) -> torch.Tensor:  # (L, 1)
+        return self._terminals
+
+    def initialize_from_numpy(self, index: int, initial_observation: np.ndarray) -> None:
+        self.observations[index] = torch.from_numpy(initial_observation)
 
     def update_from_numpy(
-        self, index: int, action: np.ndarray, next_observation: np.ndarray, reward: float
+        self, index: int, action: np.ndarray, next_observation: np.ndarray, reward: float, terminal: bool
     ) -> None:
         """
-        Assumes this trajectory has been initialized from `create` with an `initial_observation`.
+        Assumes this trajectory has been initialized from initialize_from_numpy.
         """
-        assert self.batch_size == 1
-        assert 0 <= index < self.environment_info.max_trajectory_length
+        assert 0 <= index < self.L
         assert action.shape == self.environment_info.action_shape
         assert next_observation.shape == self.environment_info.observation_shape
 
         next_observation_pt = torch.from_numpy(next_observation)
+        action_pt = torch.from_numpy(next_observation)
 
-        self.actions[0, index] = torch.from_numpy(action)
-        self.next_observations[0, index] = next_observation_pt
-        self.rewards[0, index] = reward
-        self.mask[0, index] = 1
+        self.actions[index] = action_pt
+        self.next_observations[index] = next_observation_pt
+        self.rewards[index] = reward
+        self.terminals[index] = terminal
 
-        if index + 1 < self.environment_info.max_trajectory_length:
-            self.observations[0, index+1] = next_observation_pt
+        if index + 1 < self.L:
+            self.observations[index+1] = next_observation_pt
 
     def to_device(self, device: str) -> None:
-        self.device = device
-        self.observations = self.observations.to(device=device)
-        self.actions = self.actions.to(device=device)
-        self.next_observations = self.next_observations.to(device=device)
-        self.rewards = self.rewards.to(device=device)
-        self.mask = self.mask.to(device=device)
+        self._data = self._data.to(device=device)
+        self._terminals = self._terminals.to(device=device)
+
+    def cpu(self) -> None:
+        self.to_device("cpu")
+
+    def cuda(self) -> None:
+        self.to_device(TORCH_DEVICE)
+
+    def take(self, indices: torch.Tensor) -> "Trajectory":
+        return Trajectory(
+            environment_info=self.trajectories.environment_info,
+            L=self.L,
+            _data=self.trajectories._data[indices].clone(),
+            _terminals=self.trajectories._terminals[indices].clone(),
+        )
+
+    def overwrite_indices(self, indices: torch.Tensor, trajectories: "Trajectory") -> None:
+        self._data[indices].copy_(trajectories._data)
+        self.terminals[indices].copy_(trajectories._terminals)
+
+    def reshape_rewards_by_trajectory(self) -> torch.Tensor:
+        """
+        Return our rewards reshaped from (L, 1) to (n_trajectories, max_trajectory_length)
+        """
+        terminal_indices = torch.concat((torch.Tensor([0]), self.terminals.nonzero(as_tuple=True)[0]))
+        index_pairs = torch.vstack((terminal_indices[:-1], terminal_indices[1:])).T
+
+        n_trajectories = terminal_indices.shape[0]
+        max_trajectory_length = torch.diff(index_pairs, dim=1).max()
+        rewards_batched: torch.Tensor = torch.zeros((n_trajectories, max_trajectory_length), device=self.rewards.device, dtype=self.rewards.dtype)
+
+        for batch_index, (start_index, end_index) in enumerate(index_pairs):
+            rewards_batched[batch_index, : end_index - start_index].copy_(self.rewards[start_index: end_index])
+
+        return rewards_batched

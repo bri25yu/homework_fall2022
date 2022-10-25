@@ -19,7 +19,7 @@ from gym import Env
 
 from rl import OUTPUT_DIR
 from rl.infrastructure import (
-    EnvironmentInfo, ModelOutput, PolicyBase, pytorch_utils, BatchTrajectory
+    EnvironmentInfo, ModelOutput, PolicyBase, pytorch_utils, Trajectory
 )
 from rl.infrastructure.pytorch_utils import TORCH_FLOAT_DTYPE
 
@@ -90,24 +90,26 @@ class TrainingPipelineBase(ABC):
     def evaluate(self, env: Env, environment_info: EnvironmentInfo, policy: PolicyBase) -> Dict[str, Any]:
         eval_batch_size = self.EVAL_BATCH_SIZE
 
-        returns = []
-        for _ in trange(eval_batch_size, desc="Evaluating agent", leave=False):
-            trajectory = self.sample_single_trajectory(env, environment_info, policy)
-            returns.append(pytorch_utils.to_numpy(torch.sum(trajectory.rewards)))
+        trajectory = self.record_n_steps(env, environment_info, policy, eval_batch_size)
+        last_terminal_index = trajectory.terminals.nonzero(as_tuple=True)[0][-1]
+        n_trajectories = trajectory.terminals.sum()
+        rewards_clipped = trajectory.rewards[:last_terminal_index]
+        average_total_return = rewards_clipped.sum() / n_trajectories
 
         return {
-            "return_eval": np.mean(returns),
+            "return_eval": pytorch_utils.to_numpy(average_total_return),
         }
 
-    def sample_single_trajectory(self, env: Env, environment_info: EnvironmentInfo, policy: PolicyBase) -> BatchTrajectory:
+    def record_n_steps(self, env: Env, environment_info: EnvironmentInfo, policy: PolicyBase, steps: int) -> Trajectory:
         policy.eval()
-        observation, _ = env.reset()
 
-        trajectory = BatchTrajectory.create(
-            environment_info=environment_info, batch_size=1, device=pytorch_utils.TORCH_DEVICE, initial_observation=observation,
-        )
-        current_step = 0
-        while True:
+        trajectory = Trajectory.create(environment_info, pytorch_utils.TORCH_DEVICE, steps)
+        terminal = True  # We reset our env on the first step
+
+        for current_step in range(steps):
+            if terminal:
+                trajectory.initialize_from_numpy(current_step, env.reset()[0])
+
             self.time_policy_forward -= time.time()
             model_output: ModelOutput = policy(trajectory)
             self.time_policy_forward += time.time()
@@ -119,14 +121,7 @@ class TrainingPipelineBase(ABC):
             next_observation, reward, terminal, _, _ = env.step(action)
             self.time_env_step += time.time()
 
-            terminal = terminal or (current_step >= (environment_info.max_trajectory_length-1))
-
-            trajectory.update_from_numpy(current_step, action, next_observation, reward)
-
-            if terminal:
-                break
-
-            current_step += 1
+            trajectory.update_from_numpy(current_step, action, next_observation, reward, terminal)
 
         trajectory.to_device("cpu")
 

@@ -1,10 +1,6 @@
-from email.mime import base
-from typing import Any, Dict
-
 import torch
-import torch.nn as nn
 
-from rl.infrastructure import BatchTrajectory, EnvironmentInfo, ModelOutput, PolicyBase, pytorch_utils
+from rl.infrastructure import Trajectory, EnvironmentInfo, ModelOutput, PolicyBase, pytorch_utils
 
 
 __all__ = ["PolicyGradientBase"]
@@ -24,24 +20,15 @@ class PolicyGradientBase(PolicyBase):
             out_shape=(1,),
         ))
 
-        # Precompute gamma vector
-        # gamma_vector_precomputed[i] = gamma ** i
-        max_trajectory_length = environment_info.max_trajectory_length
-        # gamma_vector_precomputed is of shape (max_trajectory_length, 1)
-        self.gamma_vector_precomputed = nn.Parameter(
-            (gamma ** torch.arange(max_trajectory_length)).unsqueeze(1),
-            requires_grad=False,
-        )
+        self.gamma = gamma
 
-    def forward(self, trajectories: BatchTrajectory) -> ModelOutput:
-        batch_size = trajectories.batch_size
-        max_sequence_length = trajectories.environment_info.max_trajectory_length
+    def forward(self, trajectories: Trajectory) -> ModelOutput:
+        L = trajectories.L
         action_shape = trajectories.environment_info.action_shape
-        action_dims = len(action_shape)
 
         actions_mean: torch.Tensor = self.mean_net(trajectories.observations)
-        actions_std = self.log_std.exp().repeat(batch_size, max_sequence_length, *(1,) * action_dims)
-        actions_dist = torch.distributions.Normal(actions_mean, actions_std, validate_args=False)
+        actions_std = self.log_std.exp().repeat(L, *(1,) * len(action_shape))
+        actions_dist = torch.distributions.Normal(actions_mean, actions_std)
 
         if not self.training:
             actions: torch.Tensor = actions_dist.sample()
@@ -50,7 +37,7 @@ class PolicyGradientBase(PolicyBase):
             return ModelOutput(actions=actions, loss=None)
 
         action_log_probs: torch.Tensor = actions_dist.log_prob(trajectories.actions)
-        action_log_probs = action_log_probs.view(batch_size, max_sequence_length, -1).sum(dim=2, keepdim=True)
+        action_log_probs = action_log_probs.view(L, -1).sum(dim=-1, keepdim=True)
 
         q_vals = self._calculate_q_vals(trajectories.rewards)
         values = self.baseline(trajectories.observations)
@@ -68,13 +55,13 @@ class PolicyGradientBase(PolicyBase):
         total_loss = policy_loss + baseline_loss
 
         def check_shapes():
-            assert values.size() == (batch_size, max_sequence_length, 1)
-            assert actions_mean.size() == (batch_size, max_sequence_length, *action_shape)
-            assert actions_std.size() == (batch_size, max_sequence_length, *action_shape)
-            assert action_log_probs.size() == (batch_size, max_sequence_length, 1)
-            assert advantages.size() == (batch_size, max_sequence_length, 1)
-            assert policy_loss_per_sample.size() == (batch_size, max_sequence_length, 1)
-            assert baseline_loss_per_sample.size() == (batch_size, max_sequence_length, 1)
+            assert values.size() == (L, 1)
+            assert actions_mean.size() == (L, *action_shape)
+            assert actions_std.size() == (L, *action_shape)
+            assert action_log_probs.size() == (L, 1)
+            assert advantages.size() == (L, 1)
+            assert policy_loss_per_sample.size() == (L, 1)
+            assert baseline_loss_per_sample.size() == (L, 1)
 
         check_shapes()
 
@@ -85,8 +72,10 @@ class PolicyGradientBase(PolicyBase):
 
         return ModelOutput(actions=None, loss=total_loss, logs=logs)
 
-    def _calculate_q_vals(self, rewards: torch.Tensor) -> torch.Tensor:
+    def _calculate_q_vals(self, rewards_batched: torch.Tensor) -> torch.Tensor:
         """
+        `rewards_batched` is shaped (n_trajectories, max_trajectory_length)
+
         We use the following discounted rewards formulation:
             q_vals[t] = sum_{t'=t}^T gamma^(t'-t) * r_{t'}
 
@@ -101,15 +90,21 @@ class PolicyGradientBase(PolicyBase):
         Inspired by https://discuss.pytorch.org/t/cumulative-sum-with-decay-factor/69788/2
 
         """
-        gamma = self.gamma_vector_precomputed
+
+        """
+        Precompute gamma vector of shape (max_trajectory_length)
+        gamma_vector_precomputed[i] = gamma ** i
+        """
+        gamma_vector = self.gamma ** torch.arange(rewards_batched.shape[1], device=rewards_batched.device, dtype=rewards_batched.dtype)
 
         """
         rewards_discounted[i] = (gamma ** i) * rewards[i]
 
-        `rewards` is of shape (batch_size, max_trajectory_length, 1)
-        `gamma` is of shape (max_trajectory_length, 1)
+        `rewards_batched` is of shape (n_trajectories, max_trajectory_length)
+        `gamma_vector` is of shape (max_trajectory_length,)
+        `rewards_discounted` is of shape (n_trajectories, max_trajectory_length)
         """
-        rewards_discounted = torch.mul(rewards, gamma)
+        rewards_discounted = torch.mul(rewards_batched, gamma_vector)
 
         """
         A cumsum proceeds from front to back, but we need to go from back to front so we need to perform a reverse cumsum.
@@ -130,16 +125,17 @@ class PolicyGradientBase(PolicyBase):
         """
         q_vals_unnormalized = rewards_discounted + torch.sum(rewards_discounted, dim=1, keepdim=True) - torch.cumsum(rewards_discounted, dim=1)
 
-        """
-        q_vals[i] = (gamma ** 0) * rewards[i] + ... + (gamma ** (T-1 - i)) * rewards[T-1]
-        """
-        q_vals = torch.div(q_vals_unnormalized, gamma)
+        # q_vals[i] = (gamma ** 0) * rewards[i] + ... + (gamma ** (T-1 - i)) * rewards[T-1]
+        q_vals = torch.div(q_vals_unnormalized, gamma_vector)
+
+        # Flatten q_vals
+        q_vals_flattened = q_vals.view(-1)
 
         def check_shapes():
-            assert rewards_discounted.size() == rewards.size()
-            assert q_vals_unnormalized.size() == rewards.size()
-            assert q_vals.size() == rewards.size()
+            assert rewards_discounted.size() == rewards_batched.size()
+            assert q_vals_unnormalized.size() == rewards_batched.size()
+            assert q_vals.size() == rewards_batched.size()
 
         check_shapes()
 
-        return q_vals
+        return q_vals_flattened
