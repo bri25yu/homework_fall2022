@@ -60,7 +60,6 @@ class TrainingPipelineBase(ABC):
         for step in trange(train_steps, desc="Training agent"):
             # Take a training step
             self.train_step_time -= time.time()
-            policy.train()
             model_output, train_logs = self.perform_single_train_step(env, environment_info, policy)
             self.train_step_time += time.time()
 
@@ -71,7 +70,6 @@ class TrainingPipelineBase(ABC):
             optimizer.step()
 
             if step % eval_steps == 0:
-                policy.eval()
                 eval_logs = self.evaluate(env, environment_info, policy)
             else:
                 eval_logs = dict()
@@ -102,6 +100,7 @@ class TrainingPipelineBase(ABC):
         }
 
     def sample_single_trajectory(self, env: Env, environment_info: EnvironmentInfo, policy: PolicyBase) -> BatchTrajectory:
+        policy.eval()
         observation, _ = env.reset()
 
         trajectory = BatchTrajectory.create(

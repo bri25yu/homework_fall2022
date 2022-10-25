@@ -43,7 +43,7 @@ class PolicyGradientBase(PolicyBase):
         actions_std = self.log_std.exp().repeat(batch_size, max_sequence_length, *(1,) * action_dims)
         actions_dist = torch.distributions.Normal(actions_mean, actions_std, validate_args=False)
 
-        if self.training:
+        if not self.training:
             actions: torch.Tensor = actions_dist.sample()
             assert actions.size() == (batch_size, max_sequence_length, *action_shape)
 

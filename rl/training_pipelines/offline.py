@@ -28,6 +28,7 @@ class OfflineTrainingPipelineBase(TrainingPipelineBase):
         batch_trajectories = self.replay_buffer.sample(batch_size)
         batch_trajectories.to_device(pytorch_utils.TORCH_DEVICE)
 
+        policy.train()
         model_output: ModelOutput = policy(batch_trajectories)
 
         train_log = {
