@@ -111,21 +111,21 @@ class TrainingPipelineBase(ABC):
             model_output: ModelOutput = policy(trajectory)
             self.policy_forward_time += time.time()
 
-            action = model_output.actions[0, -1].detach().cpu().numpy()
+            action = pytorch_utils.to_numpy(model_output.actions[0, current_step])
             assert action.shape == environment_info.action_shape
 
             self.env_step_time -= time.time()
             next_observation, reward, terminal, _, _ = env.step(action)
             self.env_step_time += time.time()
 
-            current_step += 1
-            terminal = terminal or (current_step >= environment_info.max_trajectory_length)
+            terminal = terminal or (current_step >= (environment_info.max_trajectory_length-1))
 
-            trajectory.update_from_numpy(current_step, observation, action, next_observation, reward, terminal)
-            observation = next_observation
+            trajectory.update_from_numpy(current_step, action, next_observation, reward, terminal)
 
             if terminal:
                 break
+
+            current_step += 1
 
         trajectory.to_device("cpu")
 

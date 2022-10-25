@@ -64,19 +64,25 @@ class BatchTrajectory:
         return trajectory
 
     def update_from_numpy(
-        self, index: int, observation: np.ndarray, action: np.ndarray, next_observation: np.ndarray, reward: float, terminal: bool
+        self, index: int, action: np.ndarray, next_observation: np.ndarray, reward: float, terminal: bool
     ) -> None:
+        """
+        Assumes this trajectory has been initialized from `create` with an `initial_observation`.
+        """
         assert self.batch_size == 1
         assert 0 <= index < self.environment_info.max_trajectory_length
-        assert observation.shape == self.environment_info.observation_shape
         assert action.shape == self.environment_info.action_shape
         assert next_observation.shape == self.environment_info.observation_shape
 
-        self.observations[0, index] = torch.from_numpy(observation)
+        next_observation_pt = torch.from_numpy(next_observation)
+
         self.actions[0, index] = torch.from_numpy(action)
-        self.next_observations[0, index] = torch.from_numpy(next_observation)
+        self.next_observations[0, index] = next_observation_pt
         self.rewards[0, index] = reward
         self.terminals[0, index] = terminal
+
+        if index + 1 < self.environment_info.max_trajectory_length:
+            self.observations[0, index+1] = next_observation_pt
 
     def to_device(self, device: str) -> None:
         self.device = device

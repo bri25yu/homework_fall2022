@@ -32,7 +32,7 @@ class PolicyGradientBase(PolicyBase):
 
     def forward(self, trajectories: BatchTrajectory) -> ModelOutput:
         batch_size = trajectories.batch_size
-        max_sequence_length = trajectories.observations.size()[1]
+        max_sequence_length = trajectories.environment_info.max_trajectory_length
         action_dims = len(trajectories.environment_info.action_shape)
 
         q_vals = self._calculate_q_vals(trajectories.rewards)
@@ -45,18 +45,24 @@ class PolicyGradientBase(PolicyBase):
         assert actions_std.size() == trajectories.actions.size()
 
         actions_dist = torch.distributions.Normal(actions_mean, actions_std, validate_args=False)
-        actions: torch.Tensor = actions_dist.rsample()
+        actions: torch.Tensor = actions_dist.sample()
         assert actions.size() == trajectories.actions.size()
 
-        action_log_probs: torch.Tensor = actions_dist.log_prob(actions)
+        action_log_probs: torch.Tensor = actions_dist.log_prob(trajectories.actions)
         action_log_probs = action_log_probs.sum(dim=2, keepdim=True)
+        assert action_log_probs.size() == q_vals.size()
 
         advantages_unnormalized = q_vals - values
         advantages = nn.functional.layer_norm(advantages_unnormalized, (max_sequence_length, 1))
+        assert advantages.size() == q_vals.size()
 
         timestep_mask = ~trajectories.terminals
-        policy_loss = -(action_log_probs * advantages.detach() * timestep_mask).sum() / batch_size
-        baseline_loss = (((values - q_vals) ** 2) * timestep_mask).mean()
+
+        policy_loss_per_sample_per_timestep = -action_log_probs * advantages.detach() * timestep_mask
+        assert policy_loss_per_sample_per_timestep.size() == q_vals.size()
+
+        policy_loss = policy_loss_per_sample_per_timestep.sum()
+        baseline_loss = ((advantages_unnormalized ** 2) * timestep_mask).sum()
 
         total_loss = policy_loss + baseline_loss
 
@@ -71,7 +77,7 @@ class PolicyGradientBase(PolicyBase):
             q_vals[i] = (gamma ** 0) * rewards[i] + ... + (gamma ** (T-1 - i)) * rewards[T-1]
 
         A popular alternative recursive formulation is below, but we stick to using tensor operations.
-            q_vals[i] = gamma * q_vals[i-1] + rewards[i]
+            q_vals[i] = gamma * q_vals[i+1] + rewards[i]
 
         q_vals is of shape (batch_size, max_trajectory_length, 1), the same as rewards
 
