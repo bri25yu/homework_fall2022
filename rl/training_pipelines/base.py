@@ -29,7 +29,7 @@ class TrainingPipelineBase(ABC):
     EVAL_STEPS: Union[None, int] = None
     LEARNING_RATE: Union[None, float] = None
 
-    EVAL_BATCH_SIZE = 1000
+    EVAL_BATCH_SIZE = 10  # Number of trajectories to collect for eval
 
     @abstractmethod
     def perform_single_train_step(self, env: Env, environment_info: EnvironmentInfo, policy: PolicyBase) -> Tuple[ModelOutput, Dict[str, Any]]:
