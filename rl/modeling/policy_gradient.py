@@ -1,3 +1,5 @@
+from typing import Any, Dict
+
 import torch
 import torch.nn as nn
 
@@ -33,45 +35,55 @@ class PolicyGradientBase(PolicyBase):
     def forward(self, trajectories: BatchTrajectory) -> ModelOutput:
         batch_size = trajectories.batch_size
         max_sequence_length = trajectories.environment_info.max_trajectory_length
-        action_dims = len(trajectories.environment_info.action_shape)
-        logs = dict()
-        logs["init reward"] = pytorch_utils.to_numpy(trajectories.rewards[:, 0].mean())
+        action_shape = trajectories.environment_info.action_shape
+        action_dims = len(action_shape)
 
         q_vals = self._calculate_q_vals(trajectories.rewards)
-        logs["init q_val"] = pytorch_utils.to_numpy(q_vals[:, 0].mean())
         values = self.baseline(trajectories.observations)
-        logs["init value"] = pytorch_utils.to_numpy(values[:, 0].mean())
-        assert values.size() == q_vals.size()
 
         actions_mean: torch.Tensor = self.mean_net(trajectories.observations)
         actions_std = self.log_std.exp().repeat(batch_size, max_sequence_length, *(1,) * action_dims)
-        assert actions_mean.size() == trajectories.actions.size()
-        assert actions_std.size() == trajectories.actions.size()
-
         actions_dist = torch.distributions.Normal(actions_mean, actions_std, validate_args=False)
         actions: torch.Tensor = actions_dist.sample()
-        assert actions.size() == trajectories.actions.size()
 
         action_log_probs: torch.Tensor = actions_dist.log_prob(trajectories.actions)
         action_log_probs = action_log_probs.view(batch_size, max_sequence_length, -1).sum(dim=2, keepdim=True)
-        assert action_log_probs.size() == q_vals.size()
-        logs["init log prob"] = pytorch_utils.to_numpy(action_log_probs[:, 0].mean())
 
-        advantages_unnormalized = q_vals - values
-        advantages = nn.functional.layer_norm(advantages_unnormalized, (max_sequence_length, 1))
-        assert advantages.size() == q_vals.size()
-        logs["init advantages_unnormalized"] = pytorch_utils.to_numpy(advantages_unnormalized[:, 0].mean())
-        logs["init advantages"] = pytorch_utils.to_numpy(advantages[:, 0].mean())
+        advantages_unnormalized: torch.Tensor = q_vals - values
+        advantages = (advantages_unnormalized - advantages_unnormalized.mean()) / (advantages_unnormalized.std() + 1e-8)
 
-        policy_loss_per_sample_per_timestep = -action_log_probs * advantages.detach() * trajectories.mask
-        assert policy_loss_per_sample_per_timestep.size() == q_vals.size()
-        logs["init policy loss"] = pytorch_utils.to_numpy(policy_loss_per_sample_per_timestep[:, 0].mean())
-
-        policy_loss = policy_loss_per_sample_per_timestep.sum()
-        baseline_loss = ((advantages_unnormalized ** 2) * trajectories.mask).sum()
-        logs["init baseline loss"] = pytorch_utils.to_numpy((advantages_unnormalized**2)[:, 0].mean())
+        policy_loss_per_sample = -action_log_probs * advantages.detach() * trajectories.mask
+        policy_loss = policy_loss_per_sample.sum()
+        baseline_loss_per_sample = (advantages_unnormalized ** 2) * trajectories.mask
+        baseline_loss = baseline_loss_per_sample.sum()
 
         total_loss = policy_loss + baseline_loss
+
+        def check_shapes():
+            assert values.size() == (batch_size, max_sequence_length, 1)
+            assert actions_mean.size() == (batch_size, max_sequence_length, *action_shape)
+            assert actions_std.size() == (batch_size, max_sequence_length, *action_shape)
+            assert actions.size() == (batch_size, max_sequence_length, *action_shape)
+            assert action_log_probs.size() == (batch_size, max_sequence_length, 1)
+            assert advantages.size() == (batch_size, max_sequence_length, 1)
+            assert policy_loss_per_sample.size() == (batch_size, max_sequence_length, 1)
+            assert baseline_loss_per_sample.size() == (batch_size, max_sequence_length, 1)
+
+        check_shapes()
+
+        def create_logs() -> Dict[str, Any]:
+            return {
+                "init reward": pytorch_utils.to_numpy(trajectories.rewards[:, 0].mean()),
+                "init q_val": pytorch_utils.to_numpy(q_vals[:, 0].mean()),
+                "init value": pytorch_utils.to_numpy(values[:, 0].mean()),
+                "init log prob": pytorch_utils.to_numpy(action_log_probs[:, 0].mean()),
+                "init advantages_unnormalized": pytorch_utils.to_numpy(advantages_unnormalized[:, 0].mean()),
+                "init advantages": pytorch_utils.to_numpy(advantages[:, 0].mean()),
+                "init policy loss": pytorch_utils.to_numpy(policy_loss_per_sample_per_timestep[:, 0].mean()),
+                "init baseline loss": pytorch_utils.to_numpy((advantages_unnormalized**2)[:, 0].mean()),
+            }
+
+        logs = create_logs()
 
         return ModelOutput(actions=actions, loss=total_loss, logs=logs)
 
@@ -100,7 +112,6 @@ class PolicyGradientBase(PolicyBase):
         `gamma` is of shape (max_trajectory_length, 1)
         """
         rewards_discounted = torch.mul(rewards, gamma)
-        assert rewards_discounted.size() == rewards.size()
 
         """
         A cumsum proceeds from front to back, but we need to go from back to front so we need to perform a reverse cumsum.
@@ -120,12 +131,17 @@ class PolicyGradientBase(PolicyBase):
         q_vals_unnormalized[i] = (gamma ** i) * rewards[i] + ... + (gamma ** (T-1)) * rewards[T-1]
         """
         q_vals_unnormalized = rewards_discounted + torch.sum(rewards_discounted, dim=1, keepdim=True) - torch.cumsum(rewards_discounted, dim=1)
-        assert q_vals_unnormalized.size() == rewards.size()
 
         """
         q_vals[i] = (gamma ** 0) * rewards[i] + ... + (gamma ** (T-1 - i)) * rewards[T-1]
         """
         q_vals = torch.div(q_vals_unnormalized, gamma)
-        assert q_vals.size() == rewards.size()
+
+        def check_shapes():
+            assert rewards_discounted.size() == rewards.size()
+            assert q_vals_unnormalized.size() == rewards.size()
+            assert q_vals.size() == rewards.size()
+
+        check_shapes()
 
         return q_vals

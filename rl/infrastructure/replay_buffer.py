@@ -41,17 +41,23 @@ class ReplayBuffer:
         self.num_examples_stored = min(self.size, self.num_examples_stored + batch_size)
         self.indices = torch.roll(self.indices, batch_size)
 
-        current_index = 0
+        replay_buffer_index = 0  # Our location in indices
+        finished_adding = False
         for trajectory in trajectories:
-            next_index = current_index + trajectory.batch_size
+            if finished_adding:
+                break
 
-            # These are the actual indices we use to update our array
-            start, end = self.indices[current_index], self.indices[next_index]
+            for trajectory_batch_idx in range(trajectory.batch_size):
+                if finished_adding:
+                    break
 
-            self.trajectories.observations[start: end] = trajectory.observations
-            self.trajectories.actions[start: end] = trajectory.actions
-            self.trajectories.next_observations[start: end] = trajectory.next_observations
-            self.trajectories.rewards[start: end] = trajectory.rewards
-            self.trajectories.mask[start: end] = trajectory.mask
+                index_to_update = self.indices[replay_buffer_index]
 
-            current_index = next_index
+                self.trajectories.observations[index_to_update] = trajectory.observations[trajectory_batch_idx]
+                self.trajectories.actions[index_to_update] = trajectory.actions[trajectory_batch_idx]
+                self.trajectories.next_observations[index_to_update] = trajectory.next_observations[trajectory_batch_idx]
+                self.trajectories.rewards[index_to_update] = trajectory.rewards[trajectory_batch_idx]
+                self.trajectories.mask[index_to_update] = trajectory.mask[trajectory_batch_idx]
+
+                replay_buffer_index += 1
+                finished_adding = replay_buffer_index >= self.size
