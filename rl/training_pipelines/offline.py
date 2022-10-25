@@ -32,7 +32,7 @@ class OfflineTrainingPipelineBase(TrainingPipelineBase):
         model_output: ModelOutput = policy(batch_trajectories)
 
         train_log = {
-            "train_loss": pytorch_utils.to_numpy(model_output.loss),
+            "loss_train": pytorch_utils.to_numpy(model_output.loss),
         }
 
         return model_output, train_log

@@ -77,8 +77,8 @@ class PolicyGradientBase(PolicyBase):
         check_shapes()
 
         logs = {
-            "policy_loss": pytorch_utils.to_numpy(policy_loss),
-            "baseline_loss": pytorch_utils.to_numpy(baseline_loss),
+            "loss_policy": pytorch_utils.to_numpy(policy_loss),
+            "loss_baseline": pytorch_utils.to_numpy(baseline_loss),
         }
 
         return ModelOutput(actions=None, loss=total_loss, logs=logs)

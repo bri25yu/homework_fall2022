@@ -59,9 +59,9 @@ class TrainingPipelineBase(ABC):
 
         for step in trange(train_steps, desc="Training agent"):
             # Take a training step
-            self.train_step_time -= time.time()
+            self.time_train_step -= time.time()
             model_output, train_logs = self.perform_single_train_step(env, environment_info, policy)
-            self.train_step_time += time.time()
+            self.time_train_step += time.time()
 
             # Update our model
             loss = model_output.loss
@@ -96,7 +96,7 @@ class TrainingPipelineBase(ABC):
             returns.append(pytorch_utils.to_numpy(torch.sum(trajectory.rewards)))
 
         return {
-            "eval_return": np.mean(returns),
+            "return_eval": np.mean(returns),
         }
 
     def sample_single_trajectory(self, env: Env, environment_info: EnvironmentInfo, policy: PolicyBase) -> BatchTrajectory:
@@ -108,16 +108,16 @@ class TrainingPipelineBase(ABC):
         )
         current_step = 0
         while True:
-            self.policy_forward_time -= time.time()
+            self.time_policy_forward -= time.time()
             model_output: ModelOutput = policy(trajectory)
-            self.policy_forward_time += time.time()
+            self.time_policy_forward += time.time()
 
             action = pytorch_utils.to_numpy(model_output.actions[0, current_step])
             assert action.shape == environment_info.action_shape
 
-            self.env_step_time -= time.time()
+            self.time_env_step -= time.time()
             next_observation, reward, terminal, _, _ = env.step(action)
-            self.env_step_time += time.time()
+            self.time_env_step += time.time()
 
             terminal = terminal or (current_step >= (environment_info.max_trajectory_length-1))
 
@@ -141,9 +141,9 @@ class TrainingPipelineBase(ABC):
         return os.path.join(OUTPUT_DIR, self.experiment_name)
 
     def reset_timers(self) -> None:
-        self.env_step_time = 0.0
-        self.train_step_time = 0.0
-        self.policy_forward_time = 0.0
+        self.time_env_step = 0.0
+        self.time_train_step = 0.0
+        self.time_policy_forward = 0.0
 
     def setup_logging(self) -> None:
         log_dir = os.path.join(self.experiment_output_dir, f"run{time.time()}")
@@ -152,9 +152,9 @@ class TrainingPipelineBase(ABC):
 
     def log_to_tensorboard(self, log: Dict[str, Any], step: int) -> None:
         log.update({
-            "env_step_time": self.env_step_time / (step+1),
-            "train_step_time": self.train_step_time / (step+1),
-            "policy_forward_time": self.policy_forward_time / (step+1),
+            "time_env_step": self.time_env_step / (step+1),
+            "time_train_step": self.time_train_step / (step+1),
+            "time_policy_forward": self.time_policy_forward / (step+1),
         })
         for key, value in log.items():
             self.logger.add_scalar(key, value, step)
