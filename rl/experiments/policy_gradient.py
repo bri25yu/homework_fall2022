@@ -12,7 +12,12 @@ class PolicyGradientExperimentBase(OffPolicyTrainingPipelineBase):
         return PolicyGradientBase(environment_info=environment_info, gamma=0.99)
 
 
-class PolicyGradientInvertedPendulumExperimentBase(PolicyGradientExperimentBase):
+class PolicyGradientInvertedPendulumExperiment(PolicyGradientExperimentBase):
+    TRAIN_STEPS = 100
+    EVAL_STEPS = 1
+    LEARNING_RATE = 3e-4
+    TRAIN_BATCH_SIZE = 1000
+
     def get_env(self) -> Tuple[Env, EnvironmentInfo]:
         env = make("InvertedPendulum-v4")
         environment_info = EnvironmentInfo(
@@ -22,17 +27,3 @@ class PolicyGradientInvertedPendulumExperimentBase(PolicyGradientExperimentBase)
         )
 
         return env, environment_info
-
-
-class PolicyGradientInvertedPendulumExperiment(PolicyGradientInvertedPendulumExperimentBase):
-    TRAIN_STEPS = 100
-    EVAL_STEPS = 1
-    LEARNING_RATE = 3e-4
-    TRAIN_BATCH_SIZE = 1000
-
-
-class PolicyGradientInvertedPendulumTestExperiment(PolicyGradientInvertedPendulumExperimentBase):
-    TRAIN_STEPS = 100
-    EVAL_STEPS = 1
-    LEARNING_RATE = 3e-4
-    TRAIN_BATCH_SIZE = 1
