@@ -49,18 +49,20 @@ class PolicyGradientBase(PolicyBase):
 
             return ModelOutput(actions=actions, loss=None)
 
-        q_vals = self._calculate_q_vals(trajectories.rewards)
-        values = self.baseline(trajectories.observations)
-
         action_log_probs: torch.Tensor = actions_dist.log_prob(trajectories.actions)
         action_log_probs = action_log_probs.view(batch_size, max_sequence_length, -1).sum(dim=2, keepdim=True)
+
+        q_vals = self._calculate_q_vals(trajectories.rewards)
+        values = self.baseline(trajectories.observations)
+        values = (values - values.mean()) / (values.std() + 1e-8)
+        values = values * q_vals.std() + q_vals.mean()
 
         advantages_unnormalized: torch.Tensor = q_vals - values
         advantages = (advantages_unnormalized - advantages_unnormalized.mean()) / (advantages_unnormalized.std() + 1e-8)
 
         policy_loss_per_sample = -action_log_probs * advantages.detach() * trajectories.mask
         policy_loss = policy_loss_per_sample.sum()
-        baseline_loss_per_sample = (advantages_unnormalized ** 2) * trajectories.mask
+        baseline_loss_per_sample = (advantages ** 2) * trajectories.mask
         baseline_loss = baseline_loss_per_sample.sum()
 
         total_loss = policy_loss + baseline_loss
