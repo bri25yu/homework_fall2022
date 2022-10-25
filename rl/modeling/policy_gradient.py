@@ -79,8 +79,8 @@ class PolicyGradientBase(PolicyBase):
                 "init log prob": pytorch_utils.to_numpy(action_log_probs[:, 0].mean()),
                 "init advantages_unnormalized": pytorch_utils.to_numpy(advantages_unnormalized[:, 0].mean()),
                 "init advantages": pytorch_utils.to_numpy(advantages[:, 0].mean()),
-                "init policy loss": pytorch_utils.to_numpy(policy_loss_per_sample_per_timestep[:, 0].mean()),
-                "init baseline loss": pytorch_utils.to_numpy((advantages_unnormalized**2)[:, 0].mean()),
+                "init policy loss": pytorch_utils.to_numpy(policy_loss_per_sample[:, 0].mean()),
+                "init baseline loss": pytorch_utils.to_numpy(baseline_loss_per_sample[:, 0].mean()),
             }
 
         logs = create_logs()
