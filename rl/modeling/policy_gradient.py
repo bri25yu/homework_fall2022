@@ -34,9 +34,13 @@ class PolicyGradientBase(PolicyBase):
         batch_size = trajectories.batch_size
         max_sequence_length = trajectories.environment_info.max_trajectory_length
         action_dims = len(trajectories.environment_info.action_shape)
+        logs = dict()
+        logs["init reward"] = pytorch_utils.to_numpy(trajectories.rewards[0, 0])
 
         q_vals = self._calculate_q_vals(trajectories.rewards)
+        logs["init q_val"] = pytorch_utils.to_numpy(q_vals[0, 0])
         values = self.baseline(trajectories.observations)
+        logs["init value"] = pytorch_utils.to_numpy(values[0, 0])
         assert values.size() == q_vals.size()
 
         actions_mean: torch.Tensor = self.mean_net(trajectories.observations)
@@ -49,22 +53,27 @@ class PolicyGradientBase(PolicyBase):
         assert actions.size() == trajectories.actions.size()
 
         action_log_probs: torch.Tensor = actions_dist.log_prob(trajectories.actions)
-        action_log_probs = action_log_probs.sum(dim=2, keepdim=True)
+        action_log_probs = action_log_probs.view(batch_size, max_sequence_length, -1).sum(dim=2, keepdim=True)
         assert action_log_probs.size() == q_vals.size()
+        logs["init log prob"] = pytorch_utils.to_numpy(action_log_probs[0, 0])
 
         advantages_unnormalized = q_vals - values
         advantages = nn.functional.layer_norm(advantages_unnormalized, (max_sequence_length, 1))
         assert advantages.size() == q_vals.size()
+        logs["init advantages_unnormalized"] = pytorch_utils.to_numpy(advantages_unnormalized[0, 0])
+        logs["init advantages"] = pytorch_utils.to_numpy(advantages[0, 0])
 
         policy_loss_per_sample_per_timestep = -action_log_probs * advantages.detach() * trajectories.mask
         assert policy_loss_per_sample_per_timestep.size() == q_vals.size()
+        logs["init policy loss"] = pytorch_utils.to_numpy(policy_loss_per_sample_per_timestep[0, 0])
 
         policy_loss = policy_loss_per_sample_per_timestep.sum()
         baseline_loss = ((advantages_unnormalized ** 2) * trajectories.mask).sum()
+        logs["init baseline loss"] = pytorch_utils.to_numpy((advantages_unnormalized**2)[0, 0])
 
         total_loss = policy_loss + baseline_loss
 
-        return ModelOutput(actions=actions, loss=total_loss)
+        return ModelOutput(actions=actions, loss=total_loss, logs=logs)
 
     def _calculate_q_vals(self, rewards: torch.Tensor) -> torch.Tensor:
         """
