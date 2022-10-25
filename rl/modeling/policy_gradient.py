@@ -1,3 +1,4 @@
+from email.mime import base
 from typing import Any, Dict
 
 import torch
@@ -38,13 +39,18 @@ class PolicyGradientBase(PolicyBase):
         action_shape = trajectories.environment_info.action_shape
         action_dims = len(action_shape)
 
-        q_vals = self._calculate_q_vals(trajectories.rewards)
-        values = self.baseline(trajectories.observations)
-
         actions_mean: torch.Tensor = self.mean_net(trajectories.observations)
         actions_std = self.log_std.exp().repeat(batch_size, max_sequence_length, *(1,) * action_dims)
         actions_dist = torch.distributions.Normal(actions_mean, actions_std, validate_args=False)
-        actions: torch.Tensor = actions_dist.sample()
+
+        if self.training:
+            actions: torch.Tensor = actions_dist.sample()
+            assert actions.size() == (batch_size, max_sequence_length, *action_shape)
+
+            return ModelOutput(actions=actions, loss=None)
+
+        q_vals = self._calculate_q_vals(trajectories.rewards)
+        values = self.baseline(trajectories.observations)
 
         action_log_probs: torch.Tensor = actions_dist.log_prob(trajectories.actions)
         action_log_probs = action_log_probs.view(batch_size, max_sequence_length, -1).sum(dim=2, keepdim=True)
@@ -63,7 +69,6 @@ class PolicyGradientBase(PolicyBase):
             assert values.size() == (batch_size, max_sequence_length, 1)
             assert actions_mean.size() == (batch_size, max_sequence_length, *action_shape)
             assert actions_std.size() == (batch_size, max_sequence_length, *action_shape)
-            assert actions.size() == (batch_size, max_sequence_length, *action_shape)
             assert action_log_probs.size() == (batch_size, max_sequence_length, 1)
             assert advantages.size() == (batch_size, max_sequence_length, 1)
             assert policy_loss_per_sample.size() == (batch_size, max_sequence_length, 1)
@@ -71,21 +76,12 @@ class PolicyGradientBase(PolicyBase):
 
         check_shapes()
 
-        def create_logs() -> Dict[str, Any]:
-            return {
-                "init reward": pytorch_utils.to_numpy(trajectories.rewards[:, 0].mean()),
-                "init q_val": pytorch_utils.to_numpy(q_vals[:, 0].mean()),
-                "init value": pytorch_utils.to_numpy(values[:, 0].mean()),
-                "init log prob": pytorch_utils.to_numpy(action_log_probs[:, 0].mean()),
-                "init advantages_unnormalized": pytorch_utils.to_numpy(advantages_unnormalized[:, 0].mean()),
-                "init advantages": pytorch_utils.to_numpy(advantages[:, 0].mean()),
-                "init policy loss": pytorch_utils.to_numpy(policy_loss_per_sample[:, 0].mean()),
-                "init baseline loss": pytorch_utils.to_numpy(baseline_loss_per_sample[:, 0].mean()),
-            }
+        logs = {
+            "policy_loss": pytorch_utils.to_numpy(policy_loss),
+            "baseline_loss": pytorch_utils.to_numpy(baseline_loss),
+        }
 
-        logs = create_logs()
-
-        return ModelOutput(actions=actions, loss=total_loss, logs=logs)
+        return ModelOutput(actions=None, loss=total_loss, logs=logs)
 
     def _calculate_q_vals(self, rewards: torch.Tensor) -> torch.Tensor:
         """

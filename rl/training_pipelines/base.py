@@ -60,6 +60,7 @@ class TrainingPipelineBase(ABC):
         for step in trange(train_steps, desc="Training agent"):
             # Take a training step
             self.train_step_time -= time.time()
+            policy.train()
             model_output, train_logs = self.perform_single_train_step(env, environment_info, policy)
             self.train_step_time += time.time()
 
@@ -70,6 +71,7 @@ class TrainingPipelineBase(ABC):
             optimizer.step()
 
             if step % eval_steps == 0:
+                policy.eval()
                 eval_logs = self.evaluate(env, environment_info, policy)
             else:
                 eval_logs = dict()
@@ -96,7 +98,7 @@ class TrainingPipelineBase(ABC):
             returns.append(pytorch_utils.to_numpy(torch.sum(trajectory.rewards)))
 
         return {
-            "eval_average_total_return": np.mean(returns),
+            "eval_return": np.mean(returns),
         }
 
     def sample_single_trajectory(self, env: Env, environment_info: EnvironmentInfo, policy: PolicyBase) -> BatchTrajectory:
@@ -151,9 +153,9 @@ class TrainingPipelineBase(ABC):
 
     def log_to_tensorboard(self, log: Dict[str, Any], step: int) -> None:
         log.update({
-            "env_step_time": self.env_step_time,
-            "train_step_time": self.train_step_time,
-            "policy_forward_time": self.policy_forward_time,
+            "env_step_time": self.env_step_time / step,
+            "train_step_time": self.train_step_time / step,
+            "policy_forward_time": self.policy_forward_time / step,
         })
         for key, value in log.items():
             self.logger.add_scalar(key, value, step)
