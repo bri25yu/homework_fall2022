@@ -152,9 +152,9 @@ class TrainingPipelineBase(ABC):
 
     def log_to_tensorboard(self, log: Dict[str, Any], step: int) -> None:
         log.update({
-            "env_step_time": self.env_step_time / step,
-            "train_step_time": self.train_step_time / step,
-            "policy_forward_time": self.policy_forward_time / step,
+            "env_step_time": self.env_step_time / (step+1),
+            "train_step_time": self.train_step_time / (step+1),
+            "policy_forward_time": self.policy_forward_time / (step+1),
         })
         for key, value in log.items():
             self.logger.add_scalar(key, value, step)
