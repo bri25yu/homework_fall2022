@@ -18,11 +18,11 @@ class BatchTrajectory:
     environment_info: EnvironmentInfo
     batch_size: int
     device: str
-    observations: torch.Tensor        # Shape: (batch_size, trajectory_length, *observation_shape)
-    actions: torch.Tensor             # Shape: (batch_size, trajectory_length, *action_shape)
-    next_observations: torch.Tensor   # Shape: (batch_size, trajectory_length, *observation_shape)
-    rewards: torch.Tensor             # Shape: (batch_size, trajectory_length, 1)
-    terminals: torch.Tensor           # Shape: (batch_size, trajectory_length, 1). 1 if terminal, 0 otherwise
+    observations: torch.Tensor          # Shape: (batch_size, trajectory_length, *observation_shape)
+    actions: torch.Tensor               # Shape: (batch_size, trajectory_length, *action_shape)
+    next_observations: torch.Tensor     # Shape: (batch_size, trajectory_length, *observation_shape)
+    rewards: torch.Tensor               # Shape: (batch_size, trajectory_length, 1)
+    mask: torch.Tensor                  # Shape: (batch_size, trajectory_length, 1). 1 if part of the trajectory, 0 otherwise
 
     def __post_init__(self) -> None:
         self.to_device(self.device)
@@ -36,7 +36,7 @@ class BatchTrajectory:
         assert self.actions.size() == (batch_size, max_trajectory_length, *action_shape)
         assert self.next_observations.size() == (batch_size, max_trajectory_length, *observation_shape)
         assert self.rewards.size() == (batch_size, max_trajectory_length, 1)
-        assert self.terminals.size() == (batch_size, max_trajectory_length, 1)
+        assert self.mask.size() == (batch_size, max_trajectory_length, 1)
 
     @classmethod
     def create(
@@ -54,7 +54,7 @@ class BatchTrajectory:
             actions=torch.zeros((batch_size, max_trajectory_length, *action_shape), dtype=TORCH_FLOAT_DTYPE),
             next_observations=torch.zeros((batch_size, max_trajectory_length, *observation_shape), dtype=TORCH_FLOAT_DTYPE),
             rewards=torch.zeros((batch_size, max_trajectory_length, 1), dtype=TORCH_FLOAT_DTYPE),
-            terminals=torch.ones((batch_size, max_trajectory_length, 1), dtype=torch.bool),
+            mask=torch.zeros((batch_size, max_trajectory_length, 1), dtype=torch.bool),
         )
 
         if initial_observation is not None:
@@ -64,7 +64,7 @@ class BatchTrajectory:
         return trajectory
 
     def update_from_numpy(
-        self, index: int, action: np.ndarray, next_observation: np.ndarray, reward: float, terminal: bool
+        self, index: int, action: np.ndarray, next_observation: np.ndarray, reward: float
     ) -> None:
         """
         Assumes this trajectory has been initialized from `create` with an `initial_observation`.
@@ -79,7 +79,7 @@ class BatchTrajectory:
         self.actions[0, index] = torch.from_numpy(action)
         self.next_observations[0, index] = next_observation_pt
         self.rewards[0, index] = reward
-        self.terminals[0, index] = terminal
+        self.mask[0, index] = 1
 
         if index + 1 < self.environment_info.max_trajectory_length:
             self.observations[0, index+1] = next_observation_pt
@@ -90,4 +90,4 @@ class BatchTrajectory:
         self.actions = self.actions.to(device=device)
         self.next_observations = self.next_observations.to(device=device)
         self.rewards = self.rewards.to(device=device)
-        self.terminals = self.terminals.to(device=device)
+        self.mask = self.mask.to(device=device)

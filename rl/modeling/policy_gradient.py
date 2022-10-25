@@ -56,13 +56,11 @@ class PolicyGradientBase(PolicyBase):
         advantages = nn.functional.layer_norm(advantages_unnormalized, (max_sequence_length, 1))
         assert advantages.size() == q_vals.size()
 
-        timestep_mask = ~trajectories.terminals
-
-        policy_loss_per_sample_per_timestep = -action_log_probs * advantages.detach() * timestep_mask
+        policy_loss_per_sample_per_timestep = -action_log_probs * advantages.detach() * trajectories.mask
         assert policy_loss_per_sample_per_timestep.size() == q_vals.size()
 
         policy_loss = policy_loss_per_sample_per_timestep.sum()
-        baseline_loss = ((advantages_unnormalized ** 2) * timestep_mask).sum()
+        baseline_loss = ((advantages_unnormalized ** 2) * trajectories.mask).sum()
 
         total_loss = policy_loss + baseline_loss
 

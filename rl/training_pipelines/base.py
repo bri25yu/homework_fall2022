@@ -120,7 +120,7 @@ class TrainingPipelineBase(ABC):
 
             terminal = terminal or (current_step >= (environment_info.max_trajectory_length-1))
 
-            trajectory.update_from_numpy(current_step, action, next_observation, reward, terminal)
+            trajectory.update_from_numpy(current_step, action, next_observation, reward)
 
             if terminal:
                 break

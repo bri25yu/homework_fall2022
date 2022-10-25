@@ -32,7 +32,7 @@ class ReplayBuffer:
             actions=torch.Tensor(self.trajectories.actions[batch_indices]),
             next_observations=torch.Tensor(self.trajectories.next_observations[batch_indices]),
             rewards=torch.Tensor(self.trajectories.rewards[batch_indices]),
-            terminals=torch.Tensor(self.trajectories.terminals[batch_indices]),
+            mask=torch.Tensor(self.trajectories.mask[batch_indices]),
         )
 
     def add_trajectories_to_buffer(self, trajectories: List[BatchTrajectory]) -> None:
@@ -52,6 +52,6 @@ class ReplayBuffer:
             self.trajectories.actions[start: end] = trajectory.actions
             self.trajectories.next_observations[start: end] = trajectory.next_observations
             self.trajectories.rewards[start: end] = trajectory.rewards
-            self.trajectories.terminals[start: end] = trajectory.terminals
+            self.trajectories.mask[start: end] = trajectory.mask
 
             current_index = next_index
