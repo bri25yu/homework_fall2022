@@ -19,6 +19,7 @@ class PolicyGradientBase(PolicyBase):
             in_shape=environment_info.observation_shape,
             out_shape=(1,),
         ))
+        self.baseline_loss_fn = torch.nn.HuberLoss()
 
         self.gamma = gamma
 
@@ -41,31 +42,34 @@ class PolicyGradientBase(PolicyBase):
 
         q_vals_batched = self._calculate_q_vals(trajectories.reshape_rewards_by_trajectory())
         q_vals = trajectories.flatten_tensor_by_trajectory(q_vals_batched)
-        q_values_normed = (q_vals - q_vals.mean()) / (q_vals.std() + 1e-8)
+        q_values_normed = self._normalize(q_vals)
 
-        values_unnormalized = self.baseline(trajectories.observations)
-        values_normed = (values_unnormalized - values_unnormalized.mean()) / (values_unnormalized.std() + 1e-8)
+        values_normed = self._normalize(self.baseline(trajectories.observations))
         values_to_q_statistics = values_normed * q_vals.std() + q_vals.mean()
 
-        advantages_unnormalized: torch.Tensor = q_vals - values_to_q_statistics
-        advantages = (advantages_unnormalized - advantages_unnormalized.mean()) / (advantages_unnormalized.std() + 1e-8)
+        advantages = self._normalize(q_vals - values_to_q_statistics)
 
         policy_loss_per_sample = -action_log_probs * advantages.detach()
         policy_loss = policy_loss_per_sample.sum()
-        baseline_loss_per_sample = ((q_values_normed - values_normed) ** 2)
-        baseline_loss = baseline_loss_per_sample.sum()
+        baseline_loss = self.baseline_loss_fn(values_normed, q_values_normed)
 
         total_loss = policy_loss + baseline_loss
 
         def check_shapes():
-            assert q_vals.size() == (L, 1)
-            assert values_to_q_statistics.size() == (L, 1)
             assert actions_mean.size() == (L, *action_shape)
             assert actions_std.size() == (L, *action_shape)
+
             assert action_log_probs.size() == (L, 1)
+
+            assert q_vals.size() == (L, 1)
+            assert q_values_normed.size() == (L, 1)
+
+            assert values_normed.size() == (L, 1)
+            assert values_to_q_statistics.size() == (L, 1)
+
             assert advantages.size() == (L, 1)
+
             assert policy_loss_per_sample.size() == (L, 1)
-            assert baseline_loss_per_sample.size() == (L, 1)
 
         check_shapes()
 
@@ -142,3 +146,6 @@ class PolicyGradientBase(PolicyBase):
         check_shapes()
 
         return q_vals
+
+    def _normalize(self, t: torch.Tensor) -> torch.Tensor:
+        return (t - t.mean()) / (t.std() + 1e-8)

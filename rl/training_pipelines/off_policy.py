@@ -12,7 +12,7 @@ __all__ = ["OffPolicyTrainingPipelineBase"]
 
 
 class OffPolicyTrainingPipelineBase(TrainingPipelineBase):
-    TRAIN_BATCH_SIZE: Union[None, int] = None
+    TRAIN_BATCH_SIZE: Union[None, int] = None  # Number of trajectories worth of steps
 
     # This is an exact copy of the `OfflineTrainingPipelineBase.perform_single_train_step` unless specified otherwise
     def perform_single_train_step(self, env: Env, environment_info: EnvironmentInfo, policy: nn.Module) -> Tuple[ModelOutput, Dict[str, Any]]:
@@ -35,7 +35,8 @@ class OffPolicyTrainingPipelineBase(TrainingPipelineBase):
         # START sample `batch_size` trajectories and add them to replay buffer
         ###########################
 
-        trajectories_to_add = self.record_n_steps(env, environment_info, policy, batch_size)
+        steps = batch_size * environment_info.max_episode_steps
+        trajectories_to_add = self.record_n_steps(env, environment_info, policy, steps)
         self.replay_buffer.add_trajectories_to_buffer(trajectories_to_add)
 
         ###########################

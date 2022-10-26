@@ -8,6 +8,7 @@ import time
 
 from tqdm.notebook import trange
 
+import torch
 from torch.optim import AdamW, Optimizer
 
 from tensorboardX import SummaryWriter
@@ -26,7 +27,7 @@ class TrainingPipelineBase(ABC):
     EVAL_STEPS: Union[None, int] = None
     LEARNING_RATE: Union[None, float] = None
 
-    EVAL_BATCH_SIZE = 1000  # Number of steps to collect for eval
+    EVAL_BATCH_SIZE = 10  # Number of trajectories worth of steps
 
     @abstractmethod
     def perform_single_train_step(self, env: Env, environment_info: EnvironmentInfo, policy: PolicyBase) -> Tuple[ModelOutput, Dict[str, Any]]:
@@ -53,6 +54,7 @@ class TrainingPipelineBase(ABC):
         policy = policy.to(device=pytorch_utils.TORCH_DEVICE, dtype=TORCH_FLOAT_DTYPE)
         optimizer = self.setup_optimizer(policy)
         self.setup_logging()
+        torch.manual_seed(42)
 
         for step in trange(train_steps, desc="Training agent"):
             # Take a training step
@@ -87,7 +89,8 @@ class TrainingPipelineBase(ABC):
     def evaluate(self, env: Env, environment_info: EnvironmentInfo, policy: PolicyBase) -> Dict[str, Any]:
         eval_batch_size = self.EVAL_BATCH_SIZE
 
-        trajectory = self.record_n_steps(env, environment_info, policy, eval_batch_size)
+        steps = eval_batch_size * environment_info.max_episode_steps
+        trajectory = self.record_n_steps(env, environment_info, policy, steps)
         last_terminal_index = trajectory.terminals.nonzero(as_tuple=True)[0][-1]
         n_trajectories = trajectory.terminals.sum()
         rewards_clipped = trajectory.rewards[:last_terminal_index]

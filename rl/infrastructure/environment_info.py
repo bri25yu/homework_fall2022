@@ -12,6 +12,7 @@ __all__ = ["EnvironmentInfo"]
 class EnvironmentInfo:
     observation_shape: Tuple[int, ...]
     action_shape: Tuple[int, ...]
+    max_episode_steps: int
 
     @property
     def observation_dim(self) -> int:
