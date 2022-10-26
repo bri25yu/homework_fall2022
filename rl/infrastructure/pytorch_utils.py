@@ -1,14 +1,6 @@
 from typing import Tuple
 
-try:  # `prod` is a native python function starting with python 3.8
-    from math import prod
-except ImportError:
-    # For all previous versions, we define a custom prod function
-    from functools import reduce
-    from operator import mul
-
-
-    prod = lambda t: reduce(mul, t)
+from numpy import prod
 
 import torch
 import torch.nn as nn
@@ -16,7 +8,7 @@ import torch.nn as nn
 from dataclasses import dataclass
 
 
-__all__ = ["TORCH_DEVICE", "TORCH_FLOAT_DTYPE", "to_numpy", "FFNConfig", "CNNConfig", "build_ffn", "build_cnn", "build_log_std"]
+__all__ = ["TORCH_DEVICE", "TORCH_FLOAT_DTYPE", "to_numpy", "build_ffn", "build_log_std"]
 
 
 TORCH_DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
@@ -38,15 +30,6 @@ class FFNConfig:
     out_shape: Tuple[int, ...]
     n_layers: int = 2
     hidden_dim: int = 64
-
-
-@dataclass
-class CNNConfig:
-    in_shape: Tuple[int, ...]
-    out_shape: Tuple[int, ...]
-    kernel_size: int
-    n_layers: int
-    hidden_dim: int
 
 
 class ReshapeLayer(nn.Module):
@@ -80,16 +63,12 @@ def build_ffn(ffn_config: FFNConfig) -> nn.Module:
 
     layers = []
     for in_dim, out_dim, activation in zip(in_dims, out_dims, activations):
-        layers.extend((nn.LayerNorm(in_dim), nn.Linear(in_dim, out_dim), get_activation(activation)))
+        layers.extend((nn.Linear(in_dim, out_dim), get_activation(activation)))
 
     input_reshape = ReshapeLayer(ffn_config.in_shape, (flattened_in_dim,))
     output_reshape = ReshapeLayer((flattened_out_dim,), ffn_config.out_shape)
 
     return nn.Sequential(input_reshape, *layers, output_reshape)
-
-
-def build_cnn(cnn_config: CNNConfig) -> nn.Module:
-    raise NotImplementedError
 
 
 def build_log_std(shape: Tuple[int, ...]) -> nn.Parameter:

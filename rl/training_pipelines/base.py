@@ -16,10 +16,8 @@ from tensorboardX import SummaryWriter
 from gym import Env
 
 from rl import OUTPUT_DIR
-from rl.infrastructure import (
-    EnvironmentInfo, ModelOutput, PolicyBase, pytorch_utils, Trajectory
-)
-from rl.infrastructure.pytorch_utils import TORCH_FLOAT_DTYPE
+from rl.infrastructure import ModelOutput, PolicyBase, Trajectory
+from rl.infrastructure.pytorch_utils import TORCH_DEVICE, TORCH_FLOAT_DTYPE, to_numpy
 
 
 class TrainingPipelineBase(ABC):
@@ -30,18 +28,18 @@ class TrainingPipelineBase(ABC):
     EVAL_BATCH_SIZE = 2  # Number of trajectories worth of steps
 
     @abstractmethod
-    def perform_single_train_step(self, env: Env, environment_info: EnvironmentInfo, policy: PolicyBase) -> Tuple[ModelOutput, Dict[str, Any]]:
+    def perform_single_train_step(self, env: Env, policy: PolicyBase) -> Tuple[ModelOutput, Dict[str, Any]]:
         """
         Perform a single train step. Returns the ModelOutput and the training logs
         """
         pass
 
     @abstractmethod
-    def get_env(self) -> Tuple[Env, EnvironmentInfo]:
+    def get_env(self) -> Env:
         pass
 
     @abstractmethod
-    def get_policy(self, environment_info: EnvironmentInfo) -> PolicyBase:
+    def get_policy(self, env: Env) -> PolicyBase:
         pass
 
     def run(self) -> None:
@@ -49,9 +47,9 @@ class TrainingPipelineBase(ABC):
         eval_steps = self.EVAL_STEPS
 
         # Setup our environment, model, and relevant training objects
-        env, environment_info = self.get_env()
-        policy = self.get_policy(environment_info)
-        policy = policy.to(device=pytorch_utils.TORCH_DEVICE, dtype=TORCH_FLOAT_DTYPE)
+        env = self.get_env()
+        policy = self.get_policy(env)
+        policy = policy.to(device=TORCH_DEVICE, dtype=TORCH_FLOAT_DTYPE)
         optimizer = self.setup_optimizer(policy)
         self.setup_logging()
         torch.manual_seed(42)
@@ -59,7 +57,7 @@ class TrainingPipelineBase(ABC):
         for step in trange(train_steps, desc="Training agent"):
             # Take a training step
             self.time_train_step -= time.time()
-            model_output, train_logs = self.perform_single_train_step(env, environment_info, policy)
+            model_output, train_logs = self.perform_single_train_step(env, policy)
             self.time_train_step += time.time()
 
             # Update our model
@@ -69,7 +67,7 @@ class TrainingPipelineBase(ABC):
             optimizer.step()
 
             if step % eval_steps == 0:
-                eval_logs = self.evaluate(env, environment_info, policy)
+                eval_logs = self.evaluate(env, policy)
             else:
                 eval_logs = dict()
 
@@ -78,7 +76,7 @@ class TrainingPipelineBase(ABC):
 
         # Perform one final eval if the last step wasn't an eval step
         if step % eval_steps != 0:
-            eval_logs = self.evaluate(env, environment_info, policy)
+            eval_logs = self.evaluate(env, policy)
             self.log_to_tensorboard(eval_logs, step+1)
 
     def setup_optimizer(self, policy: PolicyBase) -> Optimizer:
@@ -86,48 +84,47 @@ class TrainingPipelineBase(ABC):
 
         return AdamW(policy.parameters(), lr=learning_rate)
 
-    def evaluate(self, env: Env, environment_info: EnvironmentInfo, policy: PolicyBase) -> Dict[str, Any]:
+    def evaluate(self, env: Env, policy: PolicyBase) -> Dict[str, Any]:
         eval_batch_size = self.EVAL_BATCH_SIZE
 
-        trajectory = self.record_trajectories(env, environment_info, policy, eval_batch_size)
+        trajectory = self.record_trajectories(env, policy, eval_batch_size)
         last_terminal_index = trajectory.terminals.nonzero(as_tuple=True)[0][-1]
         n_trajectories = trajectory.terminals.sum()
         rewards_clipped = trajectory.rewards[:last_terminal_index]
         average_total_return = rewards_clipped.sum() / n_trajectories
 
         return {
-            "return_eval": pytorch_utils.to_numpy(average_total_return),
+            "return_eval": to_numpy(average_total_return),
         }
 
-    def record_trajectories(self, env: Env, environment_info: EnvironmentInfo, policy: PolicyBase, batch_size: int) -> Trajectory:
-        steps = batch_size * environment_info.max_episode_steps
+    def record_trajectories(self, env: Env, policy: PolicyBase, batch_size: int) -> Trajectory:
+        max_episode_steps = env.spec.max_episode_steps
+        steps = batch_size * max_episode_steps
         policy.eval()
 
-        trajectory = Trajectory.create(environment_info, pytorch_utils.TORCH_DEVICE, steps)
+        trajectory = Trajectory(steps)
+        trajectory.cuda()
         terminal = True  # We reset our env on the first step
 
         for current_step in trange(steps, desc="Stepping", leave=False):
             if terminal:
-                trajectory.initialize_from_numpy(current_step, env.reset()[0])
+                trajectory.update_observations_from_numpy(current_step, env.reset()[0])
                 current_trajectory_step = 0
 
             self.time_policy_forward -= time.time()
             model_output: ModelOutput = policy(trajectory)
             self.time_policy_forward += time.time()
 
-            action = pytorch_utils.to_numpy(model_output.actions[current_step])
-            assert action.shape == environment_info.action_shape
+            action = to_numpy(model_output.actions[current_step])
 
             self.time_env_step -= time.time()
             next_observation, reward, terminal, _, _ = env.step(action)
             self.time_env_step += time.time()
 
             current_trajectory_step += 1
-            terminal = terminal or (current_trajectory_step >= environment_info.max_episode_steps)
+            terminal = terminal or (current_trajectory_step >= max_episode_steps)
 
-            trajectory.update_from_numpy(current_step, action, next_observation, reward, terminal)
-
-        trajectory.to_device("cpu")
+            trajectory.update_consequences_from_numpy(current_step, action, next_observation, reward, terminal)
 
         return trajectory
 

@@ -1,9 +1,7 @@
-from rl.infrastructure.environment_info import EnvironmentInfo
 from rl.infrastructure.trajectory import Trajectory 
 from rl.infrastructure.model_output import ModelOutput
-from rl.infrastructure.replay_buffer import ReplayBuffer
 from rl.infrastructure.policy import PolicyBase
-import rl.infrastructure.pytorch_utils as pytorch_utils
+from rl.infrastructure.pytorch_utils import TORCH_DEVICE, TORCH_FLOAT_DTYPE, to_numpy, build_ffn, build_log_std, FFNConfig
 
 
 __all__ = [
@@ -12,5 +10,10 @@ __all__ = [
     "ModelOutput",
     "ReplayBuffer",
     "PolicyBase",
-    "pytorch_utils",
+    "TORCH_DEVICE",
+    "TORCH_FLOAT_DTYPE",
+    "to_numpy",
+    "build_ffn",
+    "build_log_std",
+    "FFNConfig",
 ]

@@ -1,8 +1,12 @@
+from typing import Union
+
 import torch
 from torch.nn import Module, Parameter
 from torch.distributions import AffineTransform, Categorical, Normal, TanhTransform, TransformedDistribution
 
-from rl.infrastructure.environment_info import EnvironmentInfo
+from gym import Env
+from gym.spaces import Discrete
+
 from rl.infrastructure.model_output import ModelOutput
 from rl.infrastructure.trajectory import Trajectory
 
@@ -10,13 +14,14 @@ from rl.infrastructure.trajectory import Trajectory
 class PolicyBase(Module):
     LOG_SCALE_BOUNDS = [-200, 2]
 
-    def __init__(self, environment_info: EnvironmentInfo) -> None:
+    def __init__(self, env: Env) -> None:
         super().__init__()
 
-        self.environment_info = environment_info
+        self.is_discrete = isinstance(env.action_space, Discrete)
 
-        if not environment_info.is_discrete:
-            action_range_low, action_range_high = self.environment_info.action_range
+        if not self.is_discrete:
+            action_range_low = env.action_space.low
+            action_range_high = env.action_space.high
             action_range_loc = (action_range_high + action_range_low) / 2
             action_range_scale = (action_range_high - action_range_low) / 2
 
@@ -31,19 +36,17 @@ class PolicyBase(Module):
     def forward(self, trajectory: Trajectory) -> ModelOutput:
         raise NotImplementedError
 
-    def create_actions_distribution(self, loc: torch.Tensor, log_scale: torch.Tensor) -> torch.distributions.Distribution:
-        if self.environment_info.is_discrete:
+    def create_actions_distribution(self, loc: torch.Tensor, log_scale: Union[None, torch.Tensor]) -> torch.distributions.Distribution:
+        if self.is_discrete:
             return Categorical(logits=loc)
 
         # Otherwise we need to create a continous distribution
 
         log_scale_min, log_scale_max = self.LOG_SCALE_BOUNDS
         L = loc.size()[0]
-        action_shape = self.environment_info.action_shape
 
         log_scale_clipped = log_scale.clamp(min=log_scale_min, max=log_scale_max)
-        scale = log_scale_clipped.exp().repeat(L, *(1,) * len(action_shape))
-        assert scale.size() == (L, *action_shape)
+        scale = log_scale_clipped.exp().repeat(L, *(1,) * (len(loc.shape) - 1))
 
         actions_dist_unscaled = Normal(loc, scale)
 
