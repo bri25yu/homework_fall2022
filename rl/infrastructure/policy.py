@@ -31,6 +31,7 @@ class PolicyBase(Module):
         raise NotImplementedError
 
     def create_continuous_actions_distribution(self, loc: torch.Tensor, log_scale: torch.Tensor) -> torch.distributions.Distribution:
+        # !TODO support discrete actions
         log_scale_min, log_scale_max = self.LOG_SCALE_BOUNDS
         L = loc.size()[0]
         action_shape = self.environment_info.action_shape

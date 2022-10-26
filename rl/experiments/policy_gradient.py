@@ -23,16 +23,3 @@ class PolicyGradientInvertedPendulumExperiment(PolicyGradientExperimentBase):
         environment_info = EnvironmentInfo.from_env(env)
 
         return env, environment_info
-
-
-class PolicyGradientCartpoleExperiment(PolicyGradientExperimentBase):
-    TRAIN_STEPS = 100
-    EVAL_STEPS = 1
-    LEARNING_RATE = 5e-3
-    TRAIN_BATCH_SIZE = 1
-
-    def get_env(self) -> Tuple[Env, EnvironmentInfo]:
-        env = make("CartPole-v1")
-        environment_info = EnvironmentInfo.from_env(env)
-
-        return env, environment_info
