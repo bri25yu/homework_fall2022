@@ -35,8 +35,7 @@ class OffPolicyTrainingPipelineBase(TrainingPipelineBase):
         # START sample `batch_size` trajectories and add them to replay buffer
         ###########################
 
-        steps = batch_size * environment_info.max_episode_steps
-        trajectories_to_add = self.record_n_steps(env, environment_info, policy, steps)
+        trajectories_to_add = self.record_trajectories(env, environment_info, policy, batch_size)
         self.replay_buffer.add_trajectories_to_buffer(trajectories_to_add)
 
         ###########################

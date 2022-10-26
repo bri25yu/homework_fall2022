@@ -27,7 +27,7 @@ class TrainingPipelineBase(ABC):
     EVAL_STEPS: Union[None, int] = None
     LEARNING_RATE: Union[None, float] = None
 
-    EVAL_BATCH_SIZE = 10  # Number of trajectories worth of steps
+    EVAL_BATCH_SIZE = 2  # Number of trajectories worth of steps
 
     @abstractmethod
     def perform_single_train_step(self, env: Env, environment_info: EnvironmentInfo, policy: PolicyBase) -> Tuple[ModelOutput, Dict[str, Any]]:
@@ -89,8 +89,7 @@ class TrainingPipelineBase(ABC):
     def evaluate(self, env: Env, environment_info: EnvironmentInfo, policy: PolicyBase) -> Dict[str, Any]:
         eval_batch_size = self.EVAL_BATCH_SIZE
 
-        steps = eval_batch_size * environment_info.max_episode_steps
-        trajectory = self.record_n_steps(env, environment_info, policy, steps)
+        trajectory = self.record_trajectories(env, environment_info, policy, eval_batch_size)
         last_terminal_index = trajectory.terminals.nonzero(as_tuple=True)[0][-1]
         n_trajectories = trajectory.terminals.sum()
         rewards_clipped = trajectory.rewards[:last_terminal_index]
@@ -100,7 +99,8 @@ class TrainingPipelineBase(ABC):
             "return_eval": pytorch_utils.to_numpy(average_total_return),
         }
 
-    def record_n_steps(self, env: Env, environment_info: EnvironmentInfo, policy: PolicyBase, steps: int) -> Trajectory:
+    def record_trajectories(self, env: Env, environment_info: EnvironmentInfo, policy: PolicyBase, batch_size: int) -> Trajectory:
+        steps = batch_size * environment_info.max_episode_steps
         policy.eval()
 
         trajectory = Trajectory.create(environment_info, pytorch_utils.TORCH_DEVICE, steps)
@@ -109,6 +109,7 @@ class TrainingPipelineBase(ABC):
         for current_step in trange(steps, desc="Stepping", leave=False):
             if terminal:
                 trajectory.initialize_from_numpy(current_step, env.reset()[0])
+                current_trajectory_step = 0
 
             self.time_policy_forward -= time.time()
             model_output: ModelOutput = policy(trajectory)
@@ -120,6 +121,9 @@ class TrainingPipelineBase(ABC):
             self.time_env_step -= time.time()
             next_observation, reward, terminal, _, _ = env.step(action)
             self.time_env_step += time.time()
+
+            current_trajectory_step += 1
+            terminal = terminal or (current_trajectory_step >= environment_info.max_episode_steps)
 
             trajectory.update_from_numpy(current_step, action, next_observation, reward, terminal)
 

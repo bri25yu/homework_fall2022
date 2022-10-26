@@ -15,14 +15,15 @@ class ReplayBuffer:
         self.trajectories = Trajectory.create(environment_info, self.DEVICE, size)
 
     def sample(self, batch_size: int) -> Trajectory:
-        assert batch_size <= self.num_examples_stored
+        steps = batch_size * self.trajectories.environment_info.max_episode_steps
+        assert steps <= self.num_examples_stored
 
-        if batch_size == self.num_examples_stored:
+        if steps == self.num_examples_stored:
             start = 0
         else:
-            start = torch.randint(self.num_examples_stored - batch_size, (1,)).item()
+            start = torch.randint(self.num_examples_stored - steps, (1,)).item()
 
-        batch_indices = self.indices[torch.arange(start, start + batch_size)]
+        batch_indices = self.indices[torch.arange(start, start + steps)]
         return self.trajectories.take(batch_indices)
 
     def add_trajectories_to_buffer(self, trajectories: Trajectory) -> None:
