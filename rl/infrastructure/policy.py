@@ -1,4 +1,6 @@
-from typing import Union
+from typing import Any, Dict, Union
+
+from dataclasses import dataclass
 
 import torch
 from torch.nn import Module, Parameter
@@ -9,6 +11,13 @@ from gym.spaces import Discrete
 
 from rl.infrastructure.model_output import ModelOutput
 from rl.infrastructure.trajectory import Trajectory
+
+
+@dataclass
+class ModelOutput:
+    actions: Union[None, torch.Tensor] = None  # Of shape (L, *action_shape)
+    loss: Union[None, torch.Tensor] = None
+    logs: Union[None, Dict[str, Any]] = None
 
 
 class PolicyBase(Module):
@@ -39,8 +48,6 @@ class PolicyBase(Module):
     def create_actions_distribution(self, loc: torch.Tensor, log_scale: Union[None, torch.Tensor]) -> torch.distributions.Distribution:
         if self.is_discrete:
             return Categorical(logits=loc)
-
-        # Otherwise we need to create a continous distribution
 
         log_scale_min, log_scale_max = self.LOG_SCALE_BOUNDS
         L = loc.size()[0]

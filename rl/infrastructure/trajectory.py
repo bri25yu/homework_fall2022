@@ -48,23 +48,10 @@ class Trajectory:
 
     def batch_pt_from_np(self, arr_np: Union[np.ndarray, float, bool]) -> torch.Tensor:
         if isinstance(arr_np, bool):
-            return torch.zeros((self.L, *arr_np.shape), dtype=torch.bool)
+            return torch.zeros((self.L, 1), dtype=torch.bool, device=TORCH_DEVICE)
         elif isinstance(arr_np, float):
-            return torch.zeros((self.L, 1), dtype=TORCH_FLOAT_DTYPE)
+            return torch.zeros((self.L, 1), dtype=TORCH_FLOAT_DTYPE, device=TORCH_DEVICE)
         elif isinstance(arr_np, np.ndarray):
-            return torch.zeros((self.L, *arr_np.shape), dtype=TORCH_FLOAT_DTYPE)
+            return torch.zeros((self.L, *arr_np.shape), dtype=TORCH_FLOAT_DTYPE, device=TORCH_DEVICE)
         else:
             raise ValueError(f"Unrecognized input array type {type(arr_np)}")
-
-    def to_device(self, device: str) -> None:
-        self.observations = self.observations.to(device)
-        self.actions = self.actions.to(device)
-        self.next_observations = self.next_observations.to(device)
-        self.rewards = self.rewards.to(device)
-        self.terminals = self.terminals.to(device)
-
-    def cpu(self) -> None:
-        self.to_device("cpu")
-
-    def cuda(self) -> None:
-        self.to_device(TORCH_DEVICE)

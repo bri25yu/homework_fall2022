@@ -1,11 +1,12 @@
 from typing import Tuple
 
+from dataclasses import dataclass
+
 from numpy import prod
 
 import torch
 import torch.nn as nn
 
-from dataclasses import dataclass
 
 
 __all__ = ["TORCH_DEVICE", "TORCH_FLOAT_DTYPE", "to_numpy", "build_ffn", "build_log_std"]

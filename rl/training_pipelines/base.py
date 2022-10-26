@@ -103,7 +103,6 @@ class TrainingPipelineBase(ABC):
         policy.eval()
 
         trajectory = Trajectory(steps)
-        trajectory.cuda()
         terminal = True  # We reset our env on the first step
 
         for current_step in trange(steps, desc="Stepping", leave=False):

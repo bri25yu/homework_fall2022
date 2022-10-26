@@ -53,7 +53,7 @@ class PolicyGradientBase(PolicyBase):
 
         mask = ~trajectories.terminals
         q_vals = trajectories.rewards.clone().detach()
-        for i in torch.arange(mask.size()[0]-2, -1, -1):
+        for i in torch.arange(L-2, -1, -1):
             q_vals[i] += gamma * mask[i] * q_vals[i+1]
 
         q_values_normed = self._normalize(q_vals)
