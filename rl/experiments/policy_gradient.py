@@ -13,9 +13,9 @@ class PolicyGradientExperimentBase(OffPolicyTrainingPipelineBase):
 
 
 class PolicyGradientInvertedPendulumExperiment(PolicyGradientExperimentBase):
-    TRAIN_STEPS = 100
-    EVAL_STEPS = 1
-    LEARNING_RATE = 1e-4
+    TRAIN_STEPS = 1000
+    EVAL_STEPS = 10
+    LEARNING_RATE = 3e-4
     TRAIN_BATCH_SIZE = 1
 
     def get_env(self) -> Tuple[Env, EnvironmentInfo]:
