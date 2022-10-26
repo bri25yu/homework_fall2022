@@ -41,23 +41,25 @@ class PolicyGradientBase(PolicyBase):
 
         q_vals_batched = self._calculate_q_vals(trajectories.reshape_rewards_by_trajectory())
         q_vals = trajectories.flatten_tensor_by_trajectory(q_vals_batched)
-        values = self.baseline(trajectories.observations)
-        values = (values - values.mean()) / (values.std() + 1e-8)
-        values = values * q_vals.std() + q_vals.mean()
+        q_values_normed = (q_vals - q_vals.mean()) / (q_vals.std() + 1e-8)
 
-        advantages_unnormalized: torch.Tensor = q_vals - values
+        values_unnormalized = self.baseline(trajectories.observations)
+        values_normed = (values_unnormalized - values_unnormalized.mean()) / (values_unnormalized.std() + 1e-8)
+        values_to_q_statistics = values_normed * q_vals.std() + q_vals.mean()
+
+        advantages_unnormalized: torch.Tensor = q_vals - values_to_q_statistics
         advantages = (advantages_unnormalized - advantages_unnormalized.mean()) / (advantages_unnormalized.std() + 1e-8)
 
         policy_loss_per_sample = -action_log_probs * advantages.detach()
-        baseline_loss_per_sample = (advantages ** 2)
         policy_loss = policy_loss_per_sample.sum()
+        baseline_loss_per_sample = ((q_values_normed - values_normed) ** 2)
         baseline_loss = baseline_loss_per_sample.sum()
 
         total_loss = policy_loss + baseline_loss
 
         def check_shapes():
             assert q_vals.size() == (L, 1)
-            assert values.size() == (L, 1)
+            assert values_to_q_statistics.size() == (L, 1)
             assert actions_mean.size() == (L, *action_shape)
             assert actions_std.size() == (L, *action_shape)
             assert action_log_probs.size() == (L, 1)
