@@ -22,7 +22,7 @@ class Trajectory:
         data_dim = observation_dim + action_dim + observation_dim + 1
 
         _data = torch.zeros((L, data_dim), device=device, dtype=TORCH_FLOAT_DTYPE)
-        _terminals = torch.ones((L, 1), device=device, dtype=bool)
+        _terminals = torch.ones((L, 1), device=device, dtype=torch.bool)
 
         return Trajectory(environment_info=environment_info, L=L, _data=_data, _terminals=_terminals)
 
@@ -77,7 +77,7 @@ class Trajectory:
         assert next_observation.shape == self.environment_info.observation_shape
 
         next_observation_pt = torch.from_numpy(next_observation)
-        action_pt = torch.from_numpy(next_observation)
+        action_pt = torch.from_numpy(action)
 
         self.actions[index] = action_pt
         self.next_observations[index] = next_observation_pt
@@ -99,28 +99,57 @@ class Trajectory:
 
     def take(self, indices: torch.Tensor) -> "Trajectory":
         return Trajectory(
-            environment_info=self.trajectories.environment_info,
-            L=self.L,
-            _data=self.trajectories._data[indices].clone(),
-            _terminals=self.trajectories._terminals[indices].clone(),
+            environment_info=self.environment_info,
+            L=indices.shape[0],
+            _data=self._data[indices].clone(),
+            _terminals=self._terminals[indices].clone(),
         )
 
     def overwrite_indices(self, indices: torch.Tensor, trajectories: "Trajectory") -> None:
-        self._data[indices].copy_(trajectories._data)
-        self.terminals[indices].copy_(trajectories._terminals)
+        self._data[indices] = trajectories._data
+        self.terminals[indices] = trajectories._terminals
+
+    def _get_batched_trajectory_info(self) -> torch.Tensor:
+        """
+        For use in `reshape_rewards_by_trajectory` and `flatten_tensor_by_trajectory`
+
+        `index_pairs` is shape (n_trajectories, 2)
+        """
+        terminal_indices = self.terminals.nonzero(as_tuple=True)[0].cpu()
+        if terminal_indices[0] != 0:
+            terminal_indices = torch.concat((torch.tensor([0], dtype=terminal_indices.dtype), terminal_indices))
+        if terminal_indices[-1] != (self.L-1):
+            terminal_indices = torch.concat((terminal_indices, torch.tensor([self.L-1], dtype=terminal_indices.dtype)))
+
+        index_pairs = torch.vstack((terminal_indices[:-1], terminal_indices[1:])).T
+
+        return index_pairs
 
     def reshape_rewards_by_trajectory(self) -> torch.Tensor:
         """
-        Return our rewards reshaped from (L, 1) to (n_trajectories, max_trajectory_length)
+        Return our rewards reshaped from (L, 1) to (n_trajectories, max_trajectory_length, 1)
         """
-        terminal_indices = torch.concat((torch.Tensor([0]), self.terminals.nonzero(as_tuple=True)[0]))
-        index_pairs = torch.vstack((terminal_indices[:-1], terminal_indices[1:])).T
+        index_pairs = self._get_batched_trajectory_info()
 
-        n_trajectories = terminal_indices.shape[0]
+        n_trajectories = index_pairs.shape[0]
         max_trajectory_length = torch.diff(index_pairs, dim=1).max()
-        rewards_batched: torch.Tensor = torch.zeros((n_trajectories, max_trajectory_length), device=self.rewards.device, dtype=self.rewards.dtype)
+        rewards_batched: torch.Tensor = torch.zeros((n_trajectories, max_trajectory_length, 1), device=self.rewards.device, dtype=self.rewards.dtype)
 
         for batch_index, (start_index, end_index) in enumerate(index_pairs):
-            rewards_batched[batch_index, : end_index - start_index].copy_(self.rewards[start_index: end_index])
+            rewards_batched[batch_index, : end_index - start_index] = self.rewards[start_index: end_index]
 
         return rewards_batched
+
+    def flatten_tensor_by_trajectory(self, t: torch.Tensor) -> torch.Tensor:
+        """
+        Returns a tensor of shape (L, 1) with values in t.
+        """
+        index_pairs = self._get_batched_trajectory_info()
+
+        return_t = torch.empty((self.L, 1), device=t.device, dtype=t.dtype)
+        for batch_index, (start_index, end_index) in enumerate(index_pairs):
+            return_t[start_index: end_index]
+            t[batch_index, : end_index - start_index]
+            return_t[start_index: end_index] = t[batch_index, : end_index - start_index]
+
+        return return_t

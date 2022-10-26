@@ -32,14 +32,15 @@ class PolicyGradientBase(PolicyBase):
 
         if not self.training:
             actions: torch.Tensor = actions_dist.sample()
-            assert actions.size() == (batch_size, max_sequence_length, *action_shape)
+            assert actions.size() == (L, *action_shape)
 
             return ModelOutput(actions=actions, loss=None)
 
         action_log_probs: torch.Tensor = actions_dist.log_prob(trajectories.actions)
         action_log_probs = action_log_probs.view(L, -1).sum(dim=-1, keepdim=True)
 
-        q_vals = self._calculate_q_vals(trajectories.rewards)
+        q_vals_batched = self._calculate_q_vals(trajectories.reshape_rewards_by_trajectory())
+        q_vals = trajectories.flatten_tensor_by_trajectory(q_vals_batched)
         values = self.baseline(trajectories.observations)
         values = (values - values.mean()) / (values.std() + 1e-8)
         values = values * q_vals.std() + q_vals.mean()
@@ -47,14 +48,15 @@ class PolicyGradientBase(PolicyBase):
         advantages_unnormalized: torch.Tensor = q_vals - values
         advantages = (advantages_unnormalized - advantages_unnormalized.mean()) / (advantages_unnormalized.std() + 1e-8)
 
-        policy_loss_per_sample = -action_log_probs * advantages.detach() * trajectories.mask
+        policy_loss_per_sample = -action_log_probs * advantages.detach()
+        baseline_loss_per_sample = (advantages ** 2)
         policy_loss = policy_loss_per_sample.sum()
-        baseline_loss_per_sample = (advantages ** 2) * trajectories.mask
         baseline_loss = baseline_loss_per_sample.sum()
 
         total_loss = policy_loss + baseline_loss
 
         def check_shapes():
+            assert q_vals.size() == (L, 1)
             assert values.size() == (L, 1)
             assert actions_mean.size() == (L, *action_shape)
             assert actions_std.size() == (L, *action_shape)
@@ -74,7 +76,7 @@ class PolicyGradientBase(PolicyBase):
 
     def _calculate_q_vals(self, rewards_batched: torch.Tensor) -> torch.Tensor:
         """
-        `rewards_batched` is shaped (n_trajectories, max_trajectory_length)
+        `rewards_batched` is shaped (n_trajectories, max_trajectory_length, 1)
 
         We use the following discounted rewards formulation:
             q_vals[t] = sum_{t'=t}^T gamma^(t'-t) * r_{t'}
@@ -92,17 +94,19 @@ class PolicyGradientBase(PolicyBase):
         """
 
         """
-        Precompute gamma vector of shape (max_trajectory_length)
+        Precompute gamma vector of shape (max_trajectory_length, 1)
         gamma_vector_precomputed[i] = gamma ** i
         """
-        gamma_vector = self.gamma ** torch.arange(rewards_batched.shape[1], device=rewards_batched.device, dtype=rewards_batched.dtype)
+        max_trajectory_length = rewards_batched.shape[1]
+        gamma_range = torch.arange(max_trajectory_length, device=rewards_batched.device, dtype=rewards_batched.dtype).unsqueeze(1)
+        gamma_vector = self.gamma ** gamma_range
 
         """
         rewards_discounted[i] = (gamma ** i) * rewards[i]
 
-        `rewards_batched` is of shape (n_trajectories, max_trajectory_length)
-        `gamma_vector` is of shape (max_trajectory_length,)
-        `rewards_discounted` is of shape (n_trajectories, max_trajectory_length)
+        `rewards_batched` is of shape (n_trajectories, max_trajectory_length, 1)
+        `gamma_vector` is of shape (max_trajectory_length, 1)
+        `rewards_discounted` is of shape (n_trajectories, max_trajectory_length, 1)
         """
         rewards_discounted = torch.mul(rewards_batched, gamma_vector)
 
@@ -128,9 +132,6 @@ class PolicyGradientBase(PolicyBase):
         # q_vals[i] = (gamma ** 0) * rewards[i] + ... + (gamma ** (T-1 - i)) * rewards[T-1]
         q_vals = torch.div(q_vals_unnormalized, gamma_vector)
 
-        # Flatten q_vals
-        q_vals_flattened = q_vals.view(-1)
-
         def check_shapes():
             assert rewards_discounted.size() == rewards_batched.size()
             assert q_vals_unnormalized.size() == rewards_batched.size()
@@ -138,4 +139,4 @@ class PolicyGradientBase(PolicyBase):
 
         check_shapes()
 
-        return q_vals_flattened
+        return q_vals

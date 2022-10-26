@@ -8,9 +8,6 @@ import time
 
 from tqdm.notebook import trange
 
-import numpy as np
-
-import torch
 from torch.optim import AdamW, Optimizer
 
 from tensorboardX import SummaryWriter
@@ -29,7 +26,7 @@ class TrainingPipelineBase(ABC):
     EVAL_STEPS: Union[None, int] = None
     LEARNING_RATE: Union[None, float] = None
 
-    EVAL_BATCH_SIZE = 10  # Number of trajectories to collect for eval
+    EVAL_BATCH_SIZE = 1000  # Number of steps to collect for eval
 
     @abstractmethod
     def perform_single_train_step(self, env: Env, environment_info: EnvironmentInfo, policy: PolicyBase) -> Tuple[ModelOutput, Dict[str, Any]]:
@@ -106,7 +103,7 @@ class TrainingPipelineBase(ABC):
         trajectory = Trajectory.create(environment_info, pytorch_utils.TORCH_DEVICE, steps)
         terminal = True  # We reset our env on the first step
 
-        for current_step in range(steps):
+        for current_step in trange(steps, desc="Stepping", leave=False):
             if terminal:
                 trajectory.initialize_from_numpy(current_step, env.reset()[0])
 
@@ -114,7 +111,7 @@ class TrainingPipelineBase(ABC):
             model_output: ModelOutput = policy(trajectory)
             self.time_policy_forward += time.time()
 
-            action = pytorch_utils.to_numpy(model_output.actions[0, current_step])
+            action = pytorch_utils.to_numpy(model_output.actions[current_step])
             assert action.shape == environment_info.action_shape
 
             self.time_env_step -= time.time()

@@ -7,7 +7,7 @@ from rl.infrastructure.trajectory import Trajectory
 class ReplayBuffer:
     DEVICE = "cpu"
 
-    def __init__(self, environment_info: EnvironmentInfo, size: int=1e6) -> None:
+    def __init__(self, environment_info: EnvironmentInfo, size: int=int(1e6)) -> None:
         self.size = size
         self.num_examples_stored = 0
 
@@ -17,7 +17,11 @@ class ReplayBuffer:
     def sample(self, batch_size: int) -> Trajectory:
         assert batch_size <= self.num_examples_stored
 
-        start = torch.randint(self.num_examples_stored)
+        if batch_size == self.num_examples_stored:
+            start = 0
+        else:
+            start = torch.randint(self.num_examples_stored - batch_size, (1,)).item()
+
         batch_indices = self.indices[torch.arange(start, start + batch_size)]
         return self.trajectories.take(batch_indices)
 

@@ -10,6 +10,6 @@ __all__ = ["ModelOutput"]
 
 @dataclass
 class ModelOutput:
-    action: Union[None, torch.Tensor] = None
+    actions: Union[None, torch.Tensor] = None  # Of shape (L, *action_shape)
     loss: Union[None, torch.Tensor] = None
     logs: Union[None, Dict[str, Any]] = None

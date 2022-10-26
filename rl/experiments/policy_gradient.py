@@ -21,7 +21,6 @@ class PolicyGradientInvertedPendulumExperiment(PolicyGradientExperimentBase):
     def get_env(self) -> Tuple[Env, EnvironmentInfo]:
         env = make("InvertedPendulum-v4")
         environment_info = EnvironmentInfo(
-            max_trajectory_length=1000,
             observation_shape=(4,),
             action_shape=(1,),
         )
