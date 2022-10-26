@@ -8,7 +8,7 @@ __all__ = ["PolicyGradientBase"]
 
 class PolicyGradientBase(PolicyBase):
     def __init__(self, environment_info: EnvironmentInfo, gamma: float) -> None:
-        super().__init__()
+        super().__init__(environment_info)
 
         self.mean_net = pytorch_utils.build_ffn(pytorch_utils.FFNConfig(
             in_shape=environment_info.observation_shape,
@@ -25,11 +25,10 @@ class PolicyGradientBase(PolicyBase):
 
     def forward(self, trajectories: Trajectory) -> ModelOutput:
         L = trajectories.L
-        action_shape = trajectories.environment_info.action_shape
+        action_shape = self.environment_info.action_shape
 
         actions_mean: torch.Tensor = self.mean_net(trajectories.observations)
-        actions_std = self.log_std.exp().repeat(L, *(1,) * len(action_shape))
-        actions_dist = torch.distributions.Normal(actions_mean, actions_std)
+        actions_dist = self.create_continuous_actions_distribution(actions_mean, self.log_std)
 
         if not self.training:
             actions: torch.Tensor = actions_dist.sample()
@@ -57,7 +56,6 @@ class PolicyGradientBase(PolicyBase):
 
         def check_shapes():
             assert actions_mean.size() == (L, *action_shape)
-            assert actions_std.size() == (L, *action_shape)
 
             assert action_log_probs.size() == (L, 1)
 
