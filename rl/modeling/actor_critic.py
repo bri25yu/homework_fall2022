@@ -3,7 +3,7 @@ import torch
 from gym import Env
 
 from rl.infrastructure import (
-    Trajectory, ModelOutput, PolicyBase, build_ffn, FFNConfig, to_numpy
+    Trajectory, ModelOutput, PolicyBase, build_ffn, FFNConfig, to_numpy, normalize
 )
 
 
@@ -44,10 +44,10 @@ class ActorCriticBase(PolicyBase):
         V_s = self.critic(trajectories.observations)
 
         with torch.no_grad():
-            rewards_normed = self._normalize(trajectories.rewards)
+            rewards_normed = normalize(trajectories.rewards)
             V_s_prime = self.critic(trajectories.next_observations)
             Q_s_a = rewards_normed + gamma * V_s_prime * (~trajectories.terminals)
-            advantages = self._normalize(Q_s_a - V_s)
+            advantages = normalize(Q_s_a - V_s)
 
         policy_loss = (-action_log_probs * advantages).sum()
         critic_loss = self.critic_loss_fn(V_s, advantages)
@@ -68,6 +68,3 @@ class ActorCriticBase(PolicyBase):
         })
 
         return ModelOutput(actions=None, loss=total_loss, logs=logs)
-
-    def _normalize(self, t: torch.Tensor) -> torch.Tensor:
-        return (t - t.mean()) / (t.std() + 1e-8)

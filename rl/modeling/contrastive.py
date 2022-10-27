@@ -4,15 +4,17 @@ import torch
 
 from gym import Env
 
-from rl.infrastructure import Trajectory, ModelOutput, PolicyBase
+from rl.infrastructure import Trajectory, ModelOutput, PolicyBase, normalize
 
 
 __all__ = ["ContrastiveBase"]
 
 
 class ContrastiveBase(PolicyBase):
-    def __init__(self, env: Env) -> None:
+    def __init__(self, env: Env, gamma: float) -> None:
         super().__init__(env)
+
+        self.gamma = gamma
 
         self.initialize_default_policy(env)
 
@@ -53,7 +55,7 @@ class ContrastiveBase(PolicyBase):
 
         logs["time_q_vals"] += time.time()
 
-        advantages = self._normalize(q_vals - corresponding_best_q_vals)
+        advantages = normalize(q_vals - corresponding_best_q_vals)
         self.best_q_vals.data = new_best_q_vals
 
         loss = (-action_log_probs * advantages).sum()
@@ -70,6 +72,3 @@ class ContrastiveBase(PolicyBase):
         logs.update({})
 
         return ModelOutput(actions=None, loss=loss, logs=logs)
-
-    def _normalize(self, t: torch.Tensor) -> torch.Tensor:
-        return (t - t.mean()) / (t.std() + 1e-8)

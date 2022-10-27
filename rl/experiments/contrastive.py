@@ -7,7 +7,7 @@ from rl.infrastructure import PolicyBase
 
 class ContrastiveExperimentBase(OffPolicyTrainingPipelineBase):
     def get_policy(self, env: Env) -> PolicyBase:
-        return ContrastiveBase(env=env)
+        return ContrastiveBase(env=env, gamma=0.99)
 
 
 class ContrastiveCartPoleExperiment(ContrastiveExperimentBase):

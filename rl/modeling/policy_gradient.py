@@ -5,7 +5,7 @@ import torch
 from gym import Env
 
 from rl.infrastructure import (
-    Trajectory, ModelOutput, PolicyBase, build_ffn, FFNConfig, to_numpy
+    Trajectory, ModelOutput, PolicyBase, build_ffn, FFNConfig, to_numpy, normalize
 )
 
 
@@ -51,10 +51,10 @@ class PolicyGradientBase(PolicyBase):
         logs["time_q_vals"] += time.time()
 
         values = self.baseline(trajectories.observations)
-        advantages = self._normalize(q_vals - (values * q_vals.std() + q_vals.mean()))
+        advantages = normalize(q_vals - (values * q_vals.std() + q_vals.mean()))
 
         policy_loss = (-action_log_probs * (advantages.detach())).sum()
-        baseline_loss = self.baseline_loss_fn(values, self._normalize(q_vals))
+        baseline_loss = self.baseline_loss_fn(values, normalize(q_vals))
 
         total_loss = policy_loss + baseline_loss
 
@@ -73,6 +73,3 @@ class PolicyGradientBase(PolicyBase):
         })
 
         return ModelOutput(actions=None, loss=total_loss, logs=logs)
-
-    def _normalize(self, t: torch.Tensor) -> torch.Tensor:
-        return (t - t.mean()) / (t.std() + 1e-8)

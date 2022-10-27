@@ -9,7 +9,8 @@ from torch.distributions import Categorical, Normal
 from gym import Env
 from gym.spaces import Discrete
 
-from rl.infrastructure.trajectory import Trajectory, build_ffn, build_log_std, FFNConfig, to_numpy
+from rl.infrastructure.trajectory import Trajectory
+from rl.infrastructure.pytorch_utils import build_ffn, build_log_std, FFNConfig
 
 
 @dataclass

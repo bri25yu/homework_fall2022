@@ -9,7 +9,7 @@ import torch.nn as nn
 
 
 
-__all__ = ["TORCH_DEVICE", "TORCH_FLOAT_DTYPE", "to_numpy", "build_ffn", "build_log_std"]
+__all__ = ["TORCH_DEVICE", "TORCH_FLOAT_DTYPE", "to_numpy", "build_ffn", "build_log_std", "normalize"]
 
 
 TORCH_DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
@@ -23,6 +23,10 @@ def to_numpy(t: torch.Tensor) -> float:
 def get_activation(activation_name: str) -> nn.Module:
     activation_function = getattr(nn, activation_name)()  
     return activation_function
+
+
+def normalize(t: torch.Tensor) -> torch.Tensor:
+    return (t - t.mean()) / (t.std() + 1e-8)
 
 
 @dataclass
