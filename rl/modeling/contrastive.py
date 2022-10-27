@@ -4,27 +4,20 @@ import torch
 
 from gym import Env
 
-from rl.infrastructure import (
-    Trajectory, ModelOutput, PolicyBase, build_ffn, FFNConfig, to_numpy
-)
+from rl.infrastructure import Trajectory, ModelOutput, PolicyBase
 
 
-__all__ = ["PolicyGradientBase"]
+__all__ = ["ContrastiveBase"]
 
 
-class PolicyGradientBase(PolicyBase):
-    def __init__(self, env: Env, gamma: float) -> None:
+class ContrastiveBase(PolicyBase):
+    def __init__(self, env: Env) -> None:
         super().__init__(env)
-
-        self.gamma = gamma
 
         self.initialize_default_policy(env)
 
-        self.baseline = build_ffn(FFNConfig(
-            in_shape=env.observation_space.shape,
-            out_shape=(1,),
-        ))
-        self.baseline_loss_fn = torch.nn.HuberLoss()
+        L = env.spec.max_episode_steps
+        self.best_q_vals = torch.nn.Parameter(torch.zeros(L, 1), requires_grad=False)
 
     def forward(self, trajectories: Trajectory) -> ModelOutput:
         L = trajectories.L
@@ -44,35 +37,39 @@ class PolicyGradientBase(PolicyBase):
             .sum(dim=-1, keepdim=True)
 
         logs["time_q_vals"] = -time.time()
+
         mask = ~trajectories.terminals
         q_vals = trajectories.rewards.clone().detach()
         for i in torch.arange(L-2, -1, -1):
             q_vals[i] += gamma * mask[i] * q_vals[i+1]
+
+        corresponding_best_q_vals = torch.empty_like(q_vals)
+        new_best_q_vals = self.best_q_vals.data.clone().detach()
+        corresponding_index = 0
+        for i in torch.arange(L):
+            corresponding_best_q_vals[i] = self.best_q_vals[corresponding_index]
+            corresponding_index = (corresponding_index + 1) * mask[i]
+            new_best_q_vals[corresponding_index] = max(new_best_q_vals[corresponding_index], q_vals[i])
+
         logs["time_q_vals"] += time.time()
 
-        values = self.baseline(trajectories.observations)
-        advantages = self._normalize(q_vals - (values * q_vals.std() + q_vals.mean()))
+        advantages = self._normalize(q_vals - corresponding_best_q_vals)
+        self.best_q_vals.data = new_best_q_vals
 
-        policy_loss = (-action_log_probs * (advantages.detach())).sum()
-        baseline_loss = self.baseline_loss_fn(values, self._normalize(q_vals))
-
-        total_loss = policy_loss + baseline_loss
+        loss = (-action_log_probs * advantages).sum()
 
         def check_shapes():
             assert action_log_probs.size() == (L, 1)
 
             assert q_vals.size() == (L, 1)
-            assert values.size() == (L, 1)
+            assert corresponding_best_q_vals.size() == (L, 1)
             assert advantages.size() == (L, 1)
 
         check_shapes()
 
-        logs.update({
-            "loss_policy": to_numpy(policy_loss),
-            "loss_baseline": to_numpy(baseline_loss),
-        })
+        logs.update({})
 
-        return ModelOutput(actions=None, loss=total_loss, logs=logs)
+        return ModelOutput(actions=None, loss=loss, logs=logs)
 
     def _normalize(self, t: torch.Tensor) -> torch.Tensor:
         return (t - t.mean()) / (t.std() + 1e-8)

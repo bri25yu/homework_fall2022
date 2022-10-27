@@ -1,11 +1,9 @@
-import time
-
 import torch
 
 from gym import Env
 
 from rl.infrastructure import (
-    Trajectory, ModelOutput, PolicyBase, build_ffn, build_log_std, FFNConfig, to_numpy
+    Trajectory, ModelOutput, PolicyBase, build_ffn, FFNConfig, to_numpy
 )
 
 
@@ -18,18 +16,7 @@ class ActorCriticBase(PolicyBase):
 
         self.gamma = gamma
 
-        if self.is_discrete:
-            self.mean_net = build_ffn(FFNConfig(
-                in_shape=env.observation_space.shape,
-                out_shape=(env.action_space.n,),
-            ))
-            self.log_std = None
-        else:
-            self.mean_net = build_ffn(FFNConfig(
-                in_shape=env.observation_space.shape,
-                out_shape=env.action_space.shape,
-            ))
-            self.log_std = build_log_std(env.action_space.shape)
+        self.initialize_default_policy(env)
 
         self.critic = build_ffn(FFNConfig(
             in_shape=env.observation_space.shape,

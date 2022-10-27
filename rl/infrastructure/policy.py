@@ -9,7 +9,7 @@ from torch.distributions import Categorical, Normal
 from gym import Env
 from gym.spaces import Discrete
 
-from rl.infrastructure.trajectory import Trajectory
+from rl.infrastructure.trajectory import Trajectory, build_ffn, build_log_std, FFNConfig, to_numpy
 
 
 @dataclass
@@ -26,6 +26,20 @@ class PolicyBase(Module):
         super().__init__()
 
         self.is_discrete = isinstance(env.action_space, Discrete)
+
+    def initialize_default_policy(self, env: Env) -> None:
+        if self.is_discrete:
+            self.mean_net = build_ffn(FFNConfig(
+                in_shape=env.observation_space.shape,
+                out_shape=(env.action_space.n,),
+            ))
+            self.log_std = None
+        else:
+            self.mean_net = build_ffn(FFNConfig(
+                in_shape=env.observation_space.shape,
+                out_shape=env.action_space.shape,
+            ))
+            self.log_std = build_log_std(env.action_space.shape)
 
     def forward(self, trajectory: Trajectory) -> ModelOutput:
         raise NotImplementedError
