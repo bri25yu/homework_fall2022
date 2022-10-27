@@ -1,4 +1,4 @@
-from typing import Any, Dict, Tuple, Union
+from typing import Any, Dict, List, Tuple, Union
 
 from abc import ABC, abstractmethod
 
@@ -6,7 +6,7 @@ import os
 
 import time
 
-from tqdm.notebook import trange
+from tqdm.notebook import trange, tqdm
 
 import torch
 from torch.optim import AdamW, Optimizer
@@ -18,7 +18,7 @@ from gym import Env
 from rl import OUTPUT_DIR, RESULTS_DIR
 from rl.infrastructure import ModelOutput, PolicyBase, Trajectory
 from rl.infrastructure.pytorch_utils import TORCH_DEVICE, TORCH_FLOAT_DTYPE, to_numpy
-from rl.infrastructure.visualization_utils import BenchmarkVisualizationInfo, create_graph
+from rl.infrastructure.visualization_utils import create_graph
 
 
 class TrainingPipelineBase(ABC):
@@ -43,7 +43,7 @@ class TrainingPipelineBase(ABC):
     def get_policy(self, env: Env) -> PolicyBase:
         pass
 
-    def run(self, seed=42) -> None:
+    def run(self, seed=42, leave_tqdm=True) -> None:
         torch.manual_seed(seed)
 
         train_steps = self.TRAIN_STEPS
@@ -56,7 +56,7 @@ class TrainingPipelineBase(ABC):
         optimizer = self.setup_optimizer(policy)
         self.setup_logging()
 
-        for step in trange(train_steps, desc="Training agent"):
+        for step in trange(train_steps, desc="Training agent", leave=leave_tqdm):
             # Take a training step
             self.time_train_step -= time.time()
             model_output, train_logs = self.perform_single_train_step(env, policy)
@@ -82,15 +82,30 @@ class TrainingPipelineBase(ABC):
             self.log_to_tensorboard(eval_logs, step+1)
 
     def benchmark(self) -> None:
-        seeds = [41, 42, 43]  # Averaging over 3 seeds is good enough
-        log_dirs = [os.path.join(self.experiment_results_dir, seed) for seed in seeds]
+        seeds, log_dirs = self.setup_benchmarking()
 
-        for seed, log_dir in zip(seeds, log_dirs):
+        for seed, log_dir in tqdm(zip(seeds, log_dirs), desc="Benchmarking", total=len(seeds)):
             self.logger = None
             self.setup_logging(log_dir)
-            self.run(seed=seed)
 
-        create_graph(BenchmarkVisualizationInfo(self, log_dirs))
+            self.run(seed=seed, leave_tqdm=False)
+
+            self.logger.close()
+
+        self.finalize_benchmarking()
+
+    def setup_benchmarking(self) -> Tuple[List[float], List[str]]:
+        """
+        Returns the seeds and log_dirs for benchmarking.
+        """
+        seeds = [41, 42, 43]  # Averaging over 3 seeds is good enough
+        seed_to_log_dir = lambda s: os.path.join(self.experiment_results_dir, str(s))
+        log_dirs = list(map(seed_to_log_dir, seeds))
+
+        return seeds, log_dirs
+
+    def finalize_benchmarking(self) -> None:
+        create_graph(self)
 
     def setup_optimizer(self, policy: PolicyBase) -> Optimizer:
         learning_rate = self.LEARNING_RATE

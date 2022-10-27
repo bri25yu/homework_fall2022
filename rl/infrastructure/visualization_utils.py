@@ -15,11 +15,10 @@ import matplotlib.pyplot as plt
 from matplotlib.axes import Axes
 from matplotlib.figure import Figure
 
-import pandas as pd
-import seaborn as sns
+from rl import RESULTS_DIR
 
 
-__all__ = ["BenchmarkVisualizationInfo", "create_graph", "create_comparative_graph"]
+__all__ = ["create_graph", "create_comparative_graph"]
 
 
 def load_eventfile(log_dir: str) -> List:
@@ -90,7 +89,6 @@ def get_eval_returns(log_dir: str) -> Tuple[List[float], List[float]]:
 @dataclass
 class BenchmarkVisualizationInfo:
     experiment: Any
-    log_dirs: List[str]
 
     @property
     def display_name(self) -> str:
@@ -111,6 +109,10 @@ class BenchmarkVisualizationInfo:
     @property
     def env_name(self) -> str:
         return self.experiment.get_env().spec.id
+
+    @property
+    def log_dirs(self) -> List[str]:
+        return self.experiment.setup_benchmarking()[1]
 
 
 def plot_single_benchmark(ax: Axes, benchmark: BenchmarkVisualizationInfo) -> None:
@@ -144,7 +146,8 @@ def finalize_graph(fig: Figure, ax: Axes) -> None:
     fig.tight_layout()
 
 
-def create_graph(benchmark: BenchmarkVisualizationInfo) -> None:
+def create_graph(experiment: Any) -> None:
+    benchmark = BenchmarkVisualizationInfo(experiment)
     fig, ax = setup_single_graph()
 
     plot_single_benchmark(ax, benchmark)
@@ -154,7 +157,8 @@ def create_graph(benchmark: BenchmarkVisualizationInfo) -> None:
     fig.savefig(os.path.join(benchmark.experiment.experiment_results_dir, "benchmark.png"))
 
 
-def create_comparative_graph(output_path: str, benchmarks: List[BenchmarkVisualizationInfo]) -> None:
+def create_comparative_graph(experiments: List[Any]) -> None:
+    benchmarks = [BenchmarkVisualizationInfo(e) for e in experiments]
     fig, ax = setup_single_graph()
 
     for benchmark in benchmarks:
@@ -165,4 +169,4 @@ def create_comparative_graph(output_path: str, benchmarks: List[BenchmarkVisuali
     ax.set_title(f"Comparison of {','.join(experiment_names)} on {benchmark.env_name}")
 
     finalize_graph(fig, ax)
-    fig.savefig(output_path)
+    fig.savefig(os.path.join(RESULTS_DIR, f"{benchmark.env_name}_{'_'.join(experiment_names)}.png"))
