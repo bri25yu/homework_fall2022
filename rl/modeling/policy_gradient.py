@@ -1,3 +1,5 @@
+import time
+
 import torch
 
 from gym import Env
@@ -38,6 +40,7 @@ class PolicyGradientBase(PolicyBase):
     def forward(self, trajectories: Trajectory) -> ModelOutput:
         L = trajectories.L
         gamma = self.gamma
+        logs = dict()
 
         actions_mean: torch.Tensor = self.mean_net(trajectories.observations)
         actions_dist = self.create_actions_distribution(actions_mean, self.log_std)
@@ -51,21 +54,18 @@ class PolicyGradientBase(PolicyBase):
             .view(L, -1) \
             .sum(dim=-1, keepdim=True)
 
+        logs["time_q_vals"] = -time.time()
         mask = ~trajectories.terminals
         q_vals = trajectories.rewards.clone().detach()
         for i in torch.arange(L-2, -1, -1):
             q_vals[i] += gamma * mask[i] * q_vals[i+1]
-
-        q_values_normed = self._normalize(q_vals)
+        logs["time_q_vals"] += time.time()
 
         values = self.baseline(trajectories.observations)
-        values_to_q_statistics = values * q_vals.std() + q_vals.mean()
+        advantages = self._normalize(q_vals - (values * q_vals.std() + q_vals.mean()))
 
-        advantages = self._normalize(q_vals - values_to_q_statistics)
-
-        policy_loss_per_sample = -action_log_probs * (advantages.detach())
-        policy_loss = policy_loss_per_sample.sum()
-        baseline_loss = self.baseline_loss_fn(values, q_values_normed)
+        policy_loss = (-action_log_probs * (advantages.detach())).sum()
+        baseline_loss = self.baseline_loss_fn(values, self._normalize(q_vals))
 
         total_loss = policy_loss + baseline_loss
 
@@ -76,14 +76,12 @@ class PolicyGradientBase(PolicyBase):
             assert values.size() == (L, 1)
             assert advantages.size() == (L, 1)
 
-            assert policy_loss_per_sample.size() == (L, 1)
-
         check_shapes()
 
-        logs = {
+        logs.update({
             "loss_policy": to_numpy(policy_loss),
             "loss_baseline": to_numpy(baseline_loss),
-        }
+        })
 
         return ModelOutput(actions=None, loss=total_loss, logs=logs)
 
