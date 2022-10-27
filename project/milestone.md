@@ -39,8 +39,10 @@ All the experiment code can be found [here](https://github.com/bri25yu/homework_
 
 
 ## Results
-<!-- [](../rl/results/) -->
+![](../rl/results/CartPole-v1_Contrastive_PolicyGradient.png)
+
+![](../rl/results/InvertedPendulum-v4_Contrastive_PolicyGradient.png)
 
 
 ## Preliminary analysis
-
+The contrastive Q-values algorithm certainly learns, but it doesn't match the performance of the corresponding policy gradient algorithm. Specifically, the algorithm is very unstable, a sign of high variance. Perhaps using a variance-reduction tool such as the baseline in policy gradient would help.

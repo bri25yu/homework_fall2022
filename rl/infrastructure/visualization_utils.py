@@ -111,6 +111,10 @@ class BenchmarkVisualizationInfo:
         return self.experiment.get_env().spec.id
 
     @property
+    def reward_threshold(self) -> str:
+        return self.experiment.get_env().spec.reward_threshold
+
+    @property
     def log_dirs(self) -> List[str]:
         return self.experiment.setup_benchmarking()[1]
 
@@ -140,7 +144,9 @@ def setup_single_graph() -> Tuple[Figure, Axes]:
     return fig, ax
 
 
-def finalize_graph(fig: Figure, ax: Axes) -> None:
+def finalize_graph(fig: Figure, ax: Axes, benchmark: BenchmarkVisualizationInfo) -> None:
+    ax.axhline(benchmark.reward_threshold, label="Target reward threshold", color="red")
+
     ax.legend()
 
     fig.tight_layout()
@@ -153,7 +159,7 @@ def create_graph(experiment: Any) -> None:
     plot_single_benchmark(ax, benchmark)
     ax.set_title(f"Performance of {benchmark.display_name} on {benchmark.env_name} averaged over {len(benchmark.log_dirs)} seeds")
 
-    finalize_graph(fig, ax)
+    finalize_graph(fig, ax, benchmark)
     fig.savefig(os.path.join(benchmark.experiment.experiment_results_dir, "benchmark.png"))
 
 
@@ -168,5 +174,5 @@ def create_comparative_graph(experiments: List[Any]) -> None:
 
     ax.set_title(f"Comparison of {','.join(experiment_names)} on {benchmark.env_name}")
 
-    finalize_graph(fig, ax)
+    finalize_graph(fig, ax, benchmark)
     fig.savefig(os.path.join(RESULTS_DIR, f"{benchmark.env_name}_{'_'.join(experiment_names)}.png"))
