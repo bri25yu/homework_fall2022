@@ -1,5 +1,9 @@
 # Contrastive off-policy learning
 
+## Changes to research hypothesis
+No changes. This progress made reflected by the content of this milestone report is still towards the direction of the initial research hypothesis. We are still interested in contrastive learning for off-policy deep reinforcement learning. 
+
+
 ## Algorithms
 We compare two algorithms: a baseline vanilla policy gradient algorithm and a contrastive Q-values algorithm. Later on, more algorithms will be run and compared against.
 
