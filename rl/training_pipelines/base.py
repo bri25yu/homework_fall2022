@@ -15,9 +15,10 @@ from tensorboardX import SummaryWriter
 
 from gym import Env
 
-from rl import OUTPUT_DIR
+from rl import OUTPUT_DIR, RESULTS_DIR
 from rl.infrastructure import ModelOutput, PolicyBase, Trajectory
 from rl.infrastructure.pytorch_utils import TORCH_DEVICE, TORCH_FLOAT_DTYPE, to_numpy
+from rl.infrastructure.visualization_utils import BenchmarkVisualizationInfo, create_graph
 
 
 class TrainingPipelineBase(ABC):
@@ -42,7 +43,9 @@ class TrainingPipelineBase(ABC):
     def get_policy(self, env: Env) -> PolicyBase:
         pass
 
-    def run(self) -> None:
+    def run(self, seed=42) -> None:
+        torch.manual_seed(seed)
+
         train_steps = self.TRAIN_STEPS
         eval_steps = self.EVAL_STEPS
 
@@ -52,7 +55,6 @@ class TrainingPipelineBase(ABC):
         policy = policy.to(device=TORCH_DEVICE, dtype=TORCH_FLOAT_DTYPE)
         optimizer = self.setup_optimizer(policy)
         self.setup_logging()
-        torch.manual_seed(42)
 
         for step in trange(train_steps, desc="Training agent"):
             # Take a training step
@@ -78,6 +80,17 @@ class TrainingPipelineBase(ABC):
         if step % eval_steps != 0:
             eval_logs = self.evaluate(env, policy)
             self.log_to_tensorboard(eval_logs, step+1)
+
+    def benchmark(self) -> None:
+        seeds = [41, 42, 43]  # Averaging over 3 seeds is good enough
+        log_dirs = [os.path.join(self.experiment_results_dir, seed) for seed in seeds]
+
+        for seed, log_dir in zip(seeds, log_dirs):
+            self.logger = None
+            self.setup_logging(log_dir)
+            self.run(seed=seed)
+
+        create_graph(BenchmarkVisualizationInfo(self, log_dirs))
 
     def setup_optimizer(self, policy: PolicyBase) -> Optimizer:
         learning_rate = self.LEARNING_RATE
@@ -135,14 +148,22 @@ class TrainingPipelineBase(ABC):
     def experiment_output_dir(self) -> str:
         return os.path.join(OUTPUT_DIR, self.experiment_name)
 
+    @property
+    def experiment_results_dir(self) -> str:
+        return os.path.join(RESULTS_DIR, self.experiment_name)
+
     def reset_timers(self) -> None:
         self.time_env_step = 0.0
         self.time_train_step = 0.0
         self.time_policy_forward = 0.0
 
-    def setup_logging(self) -> None:
-        log_dir = os.path.join(self.experiment_output_dir, f"run{time.time()}")
-        self.logger = SummaryWriter(log_dir=log_dir)
+    def setup_logging(self, log_dir: Union[None, str]=None) -> None:
+        if log_dir is None:
+            log_dir = os.path.join(self.experiment_output_dir, f"run{time.time()}")
+
+        if not hasattr(self, "logger") or (self.logger is None):
+            self.logger = SummaryWriter(log_dir=log_dir)
+
         self.reset_timers()
 
     def log_to_tensorboard(self, log: Dict[str, Any], step: int) -> None:
