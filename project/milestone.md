@@ -39,9 +39,10 @@ All the experiment code can be found [here](https://github.com/bri25yu/homework_
 
 
 ## Results
-![](../rl/results/CartPole-v1_Contrastive_PolicyGradient.png)
-
-![](../rl/results/InvertedPendulum-v4_Contrastive_PolicyGradient.png)
+<div style="text-align: center">
+    <img src="../rl/results/CartPole-v1_Contrastive_PolicyGradient.png" width="250" height="200" />
+    <img src="../rl/results/InvertedPendulum-v4_Contrastive_PolicyGradient.png" width="250" height="200" />
+</div>
 
 
 ## Preliminary analysis
