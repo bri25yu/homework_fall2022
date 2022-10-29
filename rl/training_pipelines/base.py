@@ -51,6 +51,7 @@ class TrainingPipelineBase(ABC):
 
         # Setup our environment, model, and relevant training objects
         env = self.get_env()
+        env.seed(seed)
         policy = self.get_policy(env)
         policy = policy.to(device=TORCH_DEVICE, dtype=TORCH_FLOAT_DTYPE)
         optimizer = self.setup_optimizer(policy)
