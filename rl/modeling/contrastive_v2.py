@@ -48,9 +48,21 @@ class ContrastiveV2Base(ContrastiveBase):
         advantages = normalize(q_vals - corresponding_best_q_vals)
         self.best_q_vals.data = new_best_q_vals
 
-        regularization_loss = (1 / L) * sum(p.abs().sum() for p in self.parameters())
+        ###############################
+        # START add log_prob proportional regularization
+        ###############################
+
+        # Original code:
+        # loss = (-action_log_probs * advantages).sum()
+
+        regularization_strength = 1 / (-action_log_probs.detach().sum())
+        regularization_loss = regularization_strength * sum(p.abs().sum() for p in self.parameters())
         improvement_loss = (-action_log_probs * advantages).sum()
         loss = regularization_loss + improvement_loss
+
+        ###############################
+        # END add log_prob proportional regularization
+        ###############################
 
         def check_shapes():
             assert action_log_probs.size() == (L, 1)
@@ -64,6 +76,7 @@ class ContrastiveV2Base(ContrastiveBase):
         logs.update({
             "loss_regularization": to_numpy(regularization_loss),
             "loss_improvement": to_numpy(improvement_loss),
+            "value_regularization_strength": to_numpy(regularization_strength),
         })
 
         return ModelOutput(actions=None, loss=loss, logs=logs)
