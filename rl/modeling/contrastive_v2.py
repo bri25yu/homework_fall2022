@@ -3,7 +3,7 @@ import time
 import torch
 
 from rl.modeling.contrastive import ContrastiveBase
-from rl.infrastructure import Trajectory, ModelOutput, normalize
+from rl.infrastructure import Trajectory, ModelOutput, normalize, to_numpy
 
 
 __all__ = ["ContrastiveV2Base"]
@@ -46,22 +46,11 @@ class ContrastiveV2Base(ContrastiveBase):
         logs["time_q_vals"] += time.time()
 
         advantages = normalize(q_vals - corresponding_best_q_vals)
-
-        ###############################
-        # START only move gradient towards good q_vals
-        ###############################
-
-        # No original code
-
-        advantages = advantages.clamp(min=0)
-
-        ###############################
-        # END only move gradient towards good q_vals
-        ###############################
-
         self.best_q_vals.data = new_best_q_vals
 
-        loss = (-action_log_probs * advantages).sum()
+        regularization_loss = (1 / L) * sum(p.abs().sum() for p in self.parameters())
+        improvement_loss = (-action_log_probs * advantages).sum()
+        loss = regularization_loss + improvement_loss
 
         def check_shapes():
             assert action_log_probs.size() == (L, 1)
@@ -72,6 +61,9 @@ class ContrastiveV2Base(ContrastiveBase):
 
         check_shapes()
 
-        logs.update({})
+        logs.update({
+            "loss_regularization": to_numpy(regularization_loss),
+            "loss_improvement": to_numpy(improvement_loss),
+        })
 
         return ModelOutput(actions=None, loss=loss, logs=logs)
