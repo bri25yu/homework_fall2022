@@ -1,4 +1,4 @@
-from typing import Any, Dict, List, Tuple, Union
+from typing import Any, Dict, Mapping, List, Tuple, Union
 
 from abc import ABC, abstractmethod
 
@@ -189,7 +189,10 @@ class TrainingPipelineBase(ABC):
             "time_policy_forward": self.time_policy_forward / (step+1),
         })
         for key, value in log.items():
-            self.logger.add_scalar(key, value, step)
+            if isinstance(value, Mapping):
+                self.logger.add_scalars(key, value, step)
+            else:
+                self.logger.add_scalar(key, value, step)
 
         self.reset_timers()
 
