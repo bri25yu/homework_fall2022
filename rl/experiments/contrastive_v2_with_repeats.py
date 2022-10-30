@@ -6,7 +6,7 @@ from rl.infrastructure import PolicyBase
 
 
 class ContrastiveV2WithRepeatsExperimentBase(OffPolicyWithRepeatsTrainingPipelineBase):
-    NUM_STEPS_PER_SAMPLE = 5
+    NUM_STEPS_PER_SAMPLE = 2
 
     def get_policy(self, env: Env) -> PolicyBase:
         return ContrastiveV2Base(env=env, gamma=0.99)

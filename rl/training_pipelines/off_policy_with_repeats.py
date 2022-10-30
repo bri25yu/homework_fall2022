@@ -29,6 +29,8 @@ class OffPolicyWithRepeatsTrainingPipelineBase(OffPolicyTrainingPipelineBase):
         policy.train()
         model_output: ModelOutput = policy(self.current_sample)
 
+        self.step_number += 1
+
         train_log = {
             "loss_train": to_numpy(model_output.loss),
         }
