@@ -139,10 +139,13 @@ class RL_Trainer(object):
             use_batchsize = self.params['batch_size']
             if itr == 0:
                 use_batchsize = self.params['batch_size_initial']
+            
+            self.time_collecting_trajectories = -time.time()
             paths, envsteps_this_batch, train_video_paths = (
                 self.collect_training_trajectories(
                     itr, initial_expertdata, collect_policy, use_batchsize)
             )
+            self.time_collecting_trajectories += time.time()
 
             self.total_envsteps += envsteps_this_batch
 
@@ -155,7 +158,9 @@ class RL_Trainer(object):
             # train agent (using sampled data from replay buffer)
             if itr % print_period == 0:
                 print("\nTraining agent...")
+            self.time_training_agent = -time.time()
             all_logs = self.train_agent()
+            self.time_training_agent += time.time()
 
             # if doing MBPO, train the model free component
             if isinstance(self.agent, MBPOAgent):
@@ -295,6 +300,8 @@ class RL_Trainer(object):
 
             logs["Train_EnvstepsSoFar"] = self.total_envsteps
             logs["TimeSinceStart"] = time.time() - self.start_time
+            logs["time_collecting_trajectories"] = self.time_collecting_trajectories
+            logs["time_training_agent"] = self.time_training_agent
             logs.update(last_log)
 
             if itr == 0:
