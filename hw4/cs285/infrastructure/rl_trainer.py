@@ -196,13 +196,34 @@ class RL_Trainer(object):
             envsteps_this_batch: the sum over the numbers of environment steps in paths
             train_video_paths: paths which also contain videos for visualization purposes
         """
-        # TODO: get this from previous HW
+        if (itr == 0) and (initial_expertdata is not None):  # If we're in the first iteration
+            loaded_paths = np.load(initial_expertdata, allow_pickle=True)
+            return loaded_paths, 0, None
 
+        # Retrieve relevant items from self
+        env = self.env
+        max_path_length = self.params['ep_len']
+
+        print("\nCollecting data to be used for training...")
+        paths, envsteps_this_batch = utils.sample_trajectories(
+            env, collect_policy, num_transitions_to_sample, max_path_length, False
+        )
+
+        train_video_paths = None
         return paths, envsteps_this_batch, train_video_paths
 
     def train_agent(self):
-        # TODO: get this from previous HW
-        pass
+        # Retrieve relevant object from self
+        batch_size = self.params['train_batch_size']
+        agent = self.agent
+        num_steps = self.params['num_agent_train_steps_per_iter']
+
+        def train_step():
+            sampled_data = agent.sample(batch_size)
+            return agent.train(*sampled_data)
+
+        all_logs = [train_step() for _ in range(num_steps)]
+        return all_logs
 
     def train_sac_agent(self):
         # TODO: Train the SAC component of the MBPO agent.

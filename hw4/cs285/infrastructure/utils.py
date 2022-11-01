@@ -1,5 +1,6 @@
+from typing import Dict, List
+
 import numpy as np
-import time
 import copy
 
 ############################################
@@ -55,24 +56,47 @@ def mean_squared_error(a, b):
 ############################################
 
 def sample_trajectory(env, policy, max_path_length, render=False):
-# TODO: get this from previous HW
+    # Init trajectory for storage: (obs, acs, rewards, next_obs, terminals)
+    trajectory: List[List[float]] = []
+
+    # Initialize env for the beginning of a new rollout
+    current_obs = env.reset()
+    steps = 0
+    while True:
+        action = policy.get_action(current_obs)[0]  # We assume that our policy returns a batch of actions
+        next_obs, reward, done, _ = env.step(action)
+
+        steps += 1
+        rollout_done = done or (steps >= max_path_length)
+
+        trajectory.append((current_obs, action, reward, next_obs, rollout_done))
+        current_obs = next_obs
+
+        if rollout_done:
+            break
+
+    return Path_from_trajectory(trajectory)
+
 
 def sample_trajectories(env, policy, min_timesteps_per_batch, max_path_length, render=False):
-    """
-        Collect rollouts using policy
-        until we have collected min_timesteps_per_batch steps
-    """
-    # TODO: get this from previous HW
+    timesteps_this_batch = 0
+    paths = []
+    while timesteps_this_batch < min_timesteps_per_batch:
+        path = sample_trajectory(env, policy, max_path_length, render)
+        timesteps_this_path = get_pathlength(path)
+
+        paths.append(path)
+        timesteps_this_batch += timesteps_this_path
 
     return paths, timesteps_this_batch
+
 
 def sample_n_trajectories(env, policy, ntraj, max_path_length, render=False):
     """
         Collect ntraj rollouts using policy
     """
-    # TODO: get this from Piazza
+    return [sample_trajectory(env, policy, max_path_length, render) for _ in range(ntraj)]
 
-    return paths
 
 ############################################
 ############################################
@@ -90,6 +114,20 @@ def Path(obs, image_obs, acs, rewards, next_obs, terminals):
             "action" : np.array(acs, dtype=np.float32),
             "next_observation": np.array(next_obs, dtype=np.float32),
             "terminal": np.array(terminals, dtype=np.float32)}
+
+
+def Path_from_trajectory(trajectory: List[List[float]]) -> Dict[str, np.ndarray]:
+    # Transposed is (obs, acs, rewards, next_obs, terminals)
+    transposed = list(zip(*trajectory))
+
+    return {
+        "observation" : np.array(transposed[0], dtype=np.float32),
+        "image_obs" : np.array([], dtype=np.uint8),
+        "action" : np.array(transposed[1], dtype=np.float32),
+        "reward" : np.array(transposed[2], dtype=np.float32),
+        "next_observation": np.array(transposed[3], dtype=np.float32),
+        "terminal": np.array(transposed[4], dtype=np.float32),
+    }
 
 
 def convert_listofrollouts(paths):
