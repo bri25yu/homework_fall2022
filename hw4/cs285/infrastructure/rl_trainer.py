@@ -231,7 +231,17 @@ class RL_Trainer(object):
         # 1) sample a batch of data of size self.sac_params['train_batch_size'] with self.agent.sample_sac
         # 2) train the SAC agent self.agent.train_sac
         # HINT: This will look similar to train_agent above.
-        pass
+        # Retrieve relevant object from self
+        batch_size = self.sac_params['train_batch_size']
+        agent = self.agent
+        num_steps = self.sac_params['num_agent_train_steps_per_iter']
+
+        def train_step():
+            sampled_data = agent.sample_sac(batch_size)
+            return agent.train_sac(*sampled_data)
+
+        all_logs = [train_step() for _ in range(num_steps)]
+        return all_logs
 
     ####################################
     ####################################

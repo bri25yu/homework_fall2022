@@ -145,7 +145,7 @@ class MPCPolicy(BasePolicy):
         sum_of_rewards = np.zeros((candidate_action_sequences.shape[0],))
         for t in range(self.horizon):
             acs = candidate_action_sequences[:, t, :]  # Shape (N, D_action)
-            sum_of_rewards += self.env.get_reward(obs, acs)
+            sum_of_rewards += self.env.get_reward(obs, acs)[0]
             obs = model.get_prediction(obs, acs, self.data_statistics)
 
         # TODO (Q2)
