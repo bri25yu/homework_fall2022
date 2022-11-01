@@ -147,16 +147,16 @@ class FFModel(nn.Module, BaseModel):
         # Hint: you should use `data_statistics['delta_mean']` and
         # `data_statistics['delta_std']`, which keep track of the mean
         # and standard deviation of the model.
-        target = ((next_observations - observations) - data_statistics["delta_mean"]) / (data_statistics["delta_std"] + 1e-8)
-        target = ptu.from_numpy(target)
+        delta_target = ((next_observations - observations) - data_statistics["delta_mean"]) / (data_statistics["delta_std"] + 1e-8)
+        delta_target = ptu.from_numpy(delta_target)
 
-        next_obs_prediction = self._forward_using_statistics(observations, actions, data_statistics)[0]
+        delta_pred_normalized = self._forward_using_statistics(observations, actions, data_statistics)[1]
 
         # TODO(Q1) compute the loss
         # Hint: `self(...)` returns a tuple, but you only need to use one of the
         # outputs.
-        assert next_obs_prediction.size() == target.size()
-        loss = self.loss(next_obs_prediction, target)
+        assert delta_pred_normalized.size() == delta_target.size()
+        loss = self.loss(delta_pred_normalized, delta_target)
 
         self.optimizer.zero_grad()
         loss.backward()

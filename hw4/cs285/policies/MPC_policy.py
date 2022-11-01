@@ -51,7 +51,7 @@ class MPCPolicy(BasePolicy):
         def sample_uniformly_random():
             loc = (self.low + self.high) / 2
             scale = (self.high - self.low) / 2
-            return np.random.rand((num_sequences, horizon, self.ac_dim)) * scale + loc
+            return np.random.rand(num_sequences, horizon, self.ac_dim) * scale + loc
 
         if self.sample_strategy == 'random' \
             or (self.sample_strategy == 'cem' and obs is None):
