@@ -102,11 +102,12 @@ class MPCPolicy(BasePolicy):
         #
         # Then, return the mean predictions across all ensembles.
         # Hint: the return value should be an array of shape (N,)
-        rewards = np.empty((len(self.dyn_models), candidate_action_sequences.shape[0]), dtype=candidate_action_sequences)
-        for i, model in enumerate(self.dyn_models):
-            rewards[i] = self.calculate_sum_of_rewards(obs, candidate_action_sequences, model)
+        N = candidate_action_sequences.shape[0]
+        rewards = np.zeros((N,))
+        for model in self.dyn_models:
+            rewards += self.calculate_sum_of_rewards(obs, candidate_action_sequences, model)
 
-        return rewards.mean(axis=0)
+        return rewards / len(self.dyn_models)
 
     def get_action(self, obs):
         if self.data_statistics is None:
@@ -140,12 +141,24 @@ class MPCPolicy(BasePolicy):
         :return: numpy array with the sum of rewards for each action sequence.
         The array should have shape [N].
         """
-        obs = obs.repeat(candidate_action_sequences.shape[0], -1)  # Shape (N, D_obs)
+        N = candidate_action_sequences.shape[0]
+        obs_shape = obs.shape
+        acs_shape = candidate_action_sequences.shape[2:]
 
-        sum_of_rewards = np.zeros((candidate_action_sequences.shape[0],))
+        obs = np.tile(obs, (N, 1))
+
+        sum_of_rewards = np.zeros((N,))
         for t in range(self.horizon):
-            acs = candidate_action_sequences[:, t, :]  # Shape (N, D_action)
-            sum_of_rewards += self.env.get_reward(obs, acs)[0]
+            assert obs.shape == (N, *obs_shape)
+
+            acs = candidate_action_sequences[:, t, :]
+            assert acs.shape == (N, *acs_shape)
+
+            rewards = self.env.get_reward(obs, acs)[0]
+            assert rewards.shape == (N,)
+
+            sum_of_rewards += rewards
+
             obs = model.get_prediction(obs, acs, self.data_statistics)
 
         # TODO (Q2)
