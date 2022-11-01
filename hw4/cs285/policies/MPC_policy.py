@@ -87,10 +87,11 @@ class MPCPolicy(BasePolicy):
         #
         # Then, return the mean predictions across all ensembles.
         # Hint: the return value should be an array of shape (N,)
-        for model in self.dyn_models: 
-            pass
+        rewards = np.empty((len(self.dyn_models), candidate_action_sequences.shape[0]), dtype=candidate_action_sequences)
+        for i, model in enumerate(self.dyn_models):
+            rewards[i] = self.calculate_sum_of_rewards(obs, candidate_action_sequences, model)
 
-        return TODO
+        return rewards.mean(axis=0)
 
     def get_action(self, obs):
         if self.data_statistics is None:
@@ -107,8 +108,8 @@ class MPCPolicy(BasePolicy):
             predicted_rewards = self.evaluate_candidate_sequences(candidate_action_sequences, obs)
 
             # pick the action sequence and return the 1st element of that sequence
-            best_action_sequence = None  # TODO (Q2)
-            action_to_take = None  # TODO (Q2)
+            best_action_sequence = candidate_action_sequences[predicted_rewards.argmax()]
+            action_to_take = best_action_sequence[0]
             return action_to_take[None]  # Unsqueeze the first index
 
     def calculate_sum_of_rewards(self, obs, candidate_action_sequences, model):
@@ -124,7 +125,15 @@ class MPCPolicy(BasePolicy):
         :return: numpy array with the sum of rewards for each action sequence.
         The array should have shape [N].
         """
-        sum_of_rewards = None  # TODO (Q2)
+        obs = obs.repeat(candidate_action_sequences.shape[0], -1)  # Shape (N, D_obs)
+
+        sum_of_rewards = np.zeros((candidate_action_sequences.shape[0],))
+        for t in range(self.horizon):
+            acs = candidate_action_sequences[:, t, :]  # Shape (N, D_action)
+            sum_of_rewards += self.env.get_reward(obs, acs)
+            obs = model.get_prediction(obs, acs, self.data_statistics)
+
+        # TODO (Q2)
         # For each candidate action sequence, predict a sequence of
         # states for each dynamics model in your ensemble.
         # Once you have a sequence of predicted states from each model in
