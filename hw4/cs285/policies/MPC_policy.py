@@ -152,56 +152,39 @@ class MPCPolicy(BasePolicy):
         delta_std = ptu.from_numpy(data_statistics["delta_std"])
 
         # Create our ensemble
-        with torch.no_grad():
-            vectorized_model, params, buffers = combine_state_for_ensemble(ensemble)
+        vectorized_model, params, buffers = combine_state_for_ensemble(ensemble)
 
         # Ensemble our initial obs
-        obs_batched = np.tile(obs_single, (ensemble_size, n_sequences, 1))
+        obs_batched = torch.tile(ptu.from_numpy(obs_single), (ensemble_size, n_sequences, *(1,) * len(ob_shape)))
 
-        total_rewards = np.zeros((n_sequences,))
+        # Create our pt buffers
+        obs_buffer = torch.empty((horizon, ensemble_size, n_sequences, *ob_shape), dtype=torch.float32, device=ptu.device)
+        acs_buffer = torch.tile(
+            (ptu.from_numpy(candidate_action_sequences) - acs_mean) / (acs_std + 1e-8),
+            (ensemble_size, *(1,) * len(candidate_action_sequences.shape))
+        ).movedim(2, 0)
+        assert acs_buffer.size() == (horizon, ensemble_size, n_sequences, *ac_shape)
+        normalized_input = torch.empty((ensemble_size, n_sequences, ob_shape[0] + ac_shape[0]), dtype=torch.float32, device=ptu.device)
+
         for t in range(horizon):
-            # Create and reshape our proposed actions
-            acs_batched = np.tile(candidate_action_sequences[:, t, :], (ensemble_size, 1))
+            obs_buffer[t] = obs_batched  # Store our obs. This will fail if the shape of `obs_batched` is incorrect
 
-            # Sanity check our obs and acs shapes
-            assert obs_batched.shape == (ensemble_size, n_sequences, *ob_shape)
-            assert acs_batched.shape == (ensemble_size, n_sequences, *ac_shape)
+            normalized_input[:, :, :ob_shape[0]] = (obs_batched - obs_mean) / (obs_std + 1e-8)
+            normalized_input[:, :, ob_shape[0]:] = acs_buffer[t]
 
-            # Get our rewards using our obs and acs
-            total_rewards += env.get_reward(
-                obs_batched.view(ensemble_size * n_sequences, -1),
-                acs_batched.view(ensemble_size * n_sequences, -1),
-            )[0].view(ensemble_size, n_sequences).mean(axis=0)
-
-            # From here on out in the for loop, our values are pt tensors
-            obs_unnormalized = ptu.from_numpy(obs_batched)
-            acs_unnormalized = ptu.from_numpy(acs_batched)
-
-            # To use with our `delta_network`, normalize our obs and acs
-            obs_normalized = (obs_unnormalized - obs_mean) / (obs_std + 1e-8)
-            acs_normalized = (acs_unnormalized - acs_mean) / (acs_std + 1e-8)
-
-            # Another sanity check on our obs and acs shapes
-            assert obs_normalized.size() == (ensemble_size, n_sequences, *ob_shape)
-            assert acs_normalized.size() == (ensemble_size, n_sequences, *ac_shape)
-
-            # Concatenate input. This assumes that our ob and ac shapes are one dimensional
-            # but they certainly do not need to be. I'm simply too lazy to write the code at this moment
-            # !TODO Improve to work with multiple ob and ac dimensions
-            concatenated_input = torch.cat([obs_normalized, acs_normalized], dim=2)
-            assert concatenated_input.size() == (ensemble_size, n_sequences, ob_shape[0] + ac_shape[0])
-
-            # Get delta predictions
             with torch.no_grad():
-                delta_predictions_normalized = vmap(vectorized_model)(params, buffers, concatenated_input)
-            assert delta_predictions_normalized.size() == (ensemble_size, n_sequences, *ob_shape)
+                delta_predictions_normalized = vmap(vectorized_model)(params, buffers, normalized_input)
 
-            next_obs_pred = obs_unnormalized + (delta_predictions_normalized * delta_std + delta_mean)
-            assert next_obs_pred.size() == (ensemble_size, n_sequences, *ob_shape)
+            obs_batched += delta_predictions_normalized * delta_std + delta_mean
 
-            obs_batched = ptu.to_numpy(next_obs_pred)
+        # Calculate rewards
+        obs = ptu.to_numpy(obs_buffer).reshape(-1, *ob_shape)
+        acs = ptu.to_numpy(acs_buffer).reshape(-1, *ac_shape)
+        rewards_by_sequence = env.get_reward(obs, acs)[0] \
+            .reshape(-1, n_sequences) \
+            .sum(axis=0)
 
-        return total_rewards
+        return rewards_by_sequence
 
     def get_action(self, obs):
         if self.data_statistics is None:
