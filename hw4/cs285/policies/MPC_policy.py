@@ -2,6 +2,8 @@ import numpy as np
 
 from .base_policy import BasePolicy
 
+import cs285.infrastructure.pytorch_util as ptu
+
 
 class MPCPolicy(BasePolicy):
 
@@ -69,7 +71,7 @@ class MPCPolicy(BasePolicy):
             # https://arxiv.org/pdf/1909.11652.pdf 
 
             def get_elites_statistics(candidate_action_sequences):
-                rewards = self.evaluate_candidate_sequences(candidate_action_sequences, obs)
+                rewards = self.evaluate_candidate_sequences_vectorized(candidate_action_sequences, obs)
                 best_k = np.argpartition(rewards, -self.cem_num_elites)[-self.cem_num_elites:]
                 elites = candidate_action_sequences[best_k]
                 return elites.mean(axis=0), elites.std(axis=0)
@@ -111,6 +113,96 @@ class MPCPolicy(BasePolicy):
 
         return rewards / len(self.dyn_models)
 
+    def evaluate_candidate_sequences_vectorized(self, candidate_action_sequences, obs_single):
+        """
+        `candidate_action_sequences` is (n_sequences, horizon, *ac_shape)
+        `obs` is ob_shape
+
+        Inspired by https://pytorch.org/functorch/stable/notebooks/ensembling.html
+
+        For convenience, we break several abstraction barriers related to `FFModel`. It's possible
+        to write this vectorized version without breaking them, but unfortunately it would require modifications
+        to multiple files and it's honestly just easier to make the change in this manner.
+        """
+
+        # If functorch is not available, we use the regular non-vectorized version
+        import torch
+        try:
+            from functorch import combine_state_for_ensemble, vmap
+        except ImportError:
+            return self.evaluate_candidate_sequences(candidate_action_sequences, obs_single)
+
+        # Retrieve relevant objects from self
+        ensemble = [m.delta_network for m in self.dyn_models]
+        data_statistics = self.data_statistics
+        env = self.env
+
+        # Relevent parameters
+        n_sequences, horizon = candidate_action_sequences.shape[:2]
+        ac_shape = candidate_action_sequences.shape[2:]
+        ob_shape = obs_single.shape
+        ensemble_size = len(ensemble)
+
+        # Get our data statistics as variables for convenience
+        obs_mean = ptu.from_numpy(data_statistics["obs_mean"])
+        obs_std = ptu.from_numpy(data_statistics["obs_std"])
+        acs_mean = ptu.from_numpy(data_statistics["acs_mean"])
+        acs_std = ptu.from_numpy(data_statistics["acs_std"])
+        delta_mean = ptu.from_numpy(data_statistics["delta_mean"])
+        delta_std = ptu.from_numpy(data_statistics["delta_std"])
+
+        # Create our ensemble
+        with torch.no_grad():
+            vectorized_model, params, buffers = combine_state_for_ensemble(ensemble)
+
+        # Ensemble our initial obs
+        obs_batched = np.tile(obs_single, (ensemble_size, n_sequences, 1))
+
+        total_rewards = np.zeros((n_sequences,))
+        for t in range(horizon):
+            # Create and reshape our proposed actions
+            acs_batched = np.tile(candidate_action_sequences[:, t, :], (ensemble_size, 1))
+
+            # Sanity check our obs and acs shapes
+            assert obs_batched.shape == (ensemble_size, n_sequences, *ob_shape)
+            assert acs_batched.shape == (ensemble_size, n_sequences, *ac_shape)
+
+            # Get our rewards using our obs and acs
+            total_rewards += env.get_reward(
+                obs_batched.view(ensemble_size * n_sequences, -1),
+                acs_batched.view(ensemble_size * n_sequences, -1),
+            )[0].view(ensemble_size, n_sequences).mean(axis=0)
+
+            # From here on out in the for loop, our values are pt tensors
+            obs_unnormalized = ptu.from_numpy(obs_batched)
+            acs_unnormalized = ptu.from_numpy(acs_batched)
+
+            # To use with our `delta_network`, normalize our obs and acs
+            obs_normalized = (obs_unnormalized - obs_mean) / (obs_std + 1e-8)
+            acs_normalized = (acs_unnormalized - acs_mean) / (acs_std + 1e-8)
+
+            # Another sanity check on our obs and acs shapes
+            assert obs_normalized.size() == (ensemble_size, n_sequences, *ob_shape)
+            assert acs_normalized.size() == (ensemble_size, n_sequences, *ac_shape)
+
+            # Concatenate input. This assumes that our ob and ac shapes are one dimensional
+            # but they certainly do not need to be. I'm simply too lazy to write the code at this moment
+            # !TODO Improve to work with multiple ob and ac dimensions
+            concatenated_input = torch.cat([obs_normalized, acs_normalized], dim=2)
+            assert concatenated_input.size() == (ensemble_size, n_sequences, ob_shape[0] + ac_shape[0])
+
+            # Get delta predictions
+            with torch.no_grad():
+                delta_predictions_normalized = vmap(vectorized_model)(params, buffers, concatenated_input)
+            assert delta_predictions_normalized.size() == (ensemble_size, n_sequences, *ob_shape)
+
+            next_obs_pred = obs_unnormalized + (delta_predictions_normalized * delta_std + delta_mean)
+            assert next_obs_pred.size() == (ensemble_size, n_sequences, *ob_shape)
+
+            obs_batched = ptu.to_numpy(next_obs_pred)
+
+        return total_rewards
+
     def get_action(self, obs):
         if self.data_statistics is None:
             return self.sample_action_sequences(num_sequences=1, horizon=1)[0]
@@ -123,7 +215,7 @@ class MPCPolicy(BasePolicy):
             # CEM: only a single action sequence to consider; return the first action
             return candidate_action_sequences[0][0][None]
         else:
-            predicted_rewards = self.evaluate_candidate_sequences(candidate_action_sequences, obs)
+            predicted_rewards = self.evaluate_candidate_sequences_vectorized(candidate_action_sequences, obs)
 
             # pick the action sequence and return the 1st element of that sequence
             best_action_sequence = candidate_action_sequences[predicted_rewards.argmax()]
