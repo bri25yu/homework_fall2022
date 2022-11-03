@@ -9,10 +9,10 @@ from rl.infrastructure import Trajectory, ModelOutput, PolicyBase, normalize, bu
 from rl.modeling.direct_transformer import T5ForReinforcementLearning
 
 
-__all__ = ["ContrastiveTransformerV3Base"]
+__all__ = ["ContrastiveTransformerV2Base"]
 
 
-class ContrastiveTransformerV3Base(PolicyBase):
+class ContrastiveTransformerV2Base(PolicyBase):
     def __init__(self, env: Env, gamma: float) -> None:
         super().__init__(env)
 

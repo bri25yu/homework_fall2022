@@ -1,16 +1,16 @@
 from gym import Env, make
 
-from rl.modeling.contrastive_transformer_v3 import ContrastiveTransformerV3Base
+from rl.modeling.contrastive_transformer_v2 import ContrastiveTransformerV2Base
 from rl.training_pipelines import OffPolicyTrainingPipelineBase
 from rl.infrastructure import PolicyBase
 
 
-class ContrastiveTransformerV3ExperimentBase(OffPolicyTrainingPipelineBase):
+class ContrastiveTransformerV2ExperimentBase(OffPolicyTrainingPipelineBase):
     def get_policy(self, env: Env) -> PolicyBase:
-        return ContrastiveTransformerV3Base(env=env, gamma=0.99)
+        return ContrastiveTransformerV2Base(env=env, gamma=0.99)
 
 
-class ContrastiveTransformerV3CartPoleExperiment(ContrastiveTransformerV3ExperimentBase):
+class ContrastiveTransformerV2CartPoleExperiment(ContrastiveTransformerV2ExperimentBase):
     TRAIN_STEPS = 100
     EVAL_STEPS = 1
     LEARNING_RATE = 5e-3
@@ -20,7 +20,7 @@ class ContrastiveTransformerV3CartPoleExperiment(ContrastiveTransformerV3Experim
         return make("CartPole-v1")
 
 
-class ContrastiveTransformerV3InvertedPendulumExperiment(ContrastiveTransformerV3ExperimentBase):
+class ContrastiveTransformerV2InvertedPendulumExperiment(ContrastiveTransformerV2ExperimentBase):
     TRAIN_STEPS = 100
     EVAL_STEPS = 1
     LEARNING_RATE = 5e-3
