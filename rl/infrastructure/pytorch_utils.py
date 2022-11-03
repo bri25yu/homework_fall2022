@@ -8,7 +8,15 @@ import torch
 import torch.nn as nn
 
 
-__all__ = ["TORCH_DEVICE", "TORCH_FLOAT_DTYPE", "to_numpy", "build_ffn", "build_log_std", "normalize", "FFNConfig"]
+__all__ = [
+    "TORCH_DEVICE",
+    "TORCH_FLOAT_DTYPE",
+    "to_numpy",
+    "build_ffn",
+    "build_log_std",
+    "normalize",
+    "FFNConfig",
+]
 
 
 TORCH_DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
