@@ -101,7 +101,7 @@ class ContrastiveTransformerBase(DirectTransformerBase):
         ###############################
 
         # Q-value prediction error
-        q_value_prediction_loss = loss_fn(q_value_prediction, q_vals).mean()
+        q_value_prediction_loss = loss_fn(normalize(q_value_prediction), normalize(q_vals)).mean()
 
         ###############################
         # END q-value prediction loss uses calculated q_values
@@ -112,20 +112,33 @@ class ContrastiveTransformerBase(DirectTransformerBase):
         ###############################
 
         # Improvement loss: -log_pi * A
-        advantages = normalize((q_vals + q_value_prediction) / 2 - corresponding_best_q_vals)
+        advantages = normalize(q_vals - corresponding_best_q_vals)
         improvement_loss = (-action_log_probs * advantages.detach()).mean()
 
         ###############################
         # END improvement loss uses advantages
         ###############################
 
-        total_loss = model_based_loss + reward_prediction_loss + q_value_prediction_loss + improvement_loss
+        ###############################
+        # START add regularization loss
+        ###############################
+
+        regularization_strength = 1 / (-action_log_probs.detach().mean())
+        regularization_loss = regularization_strength * sum(p.abs().sum() for p in self.parameters())
+
+        ###############################
+        # END add regularization loss
+        ###############################
+
+        total_loss = model_based_loss + reward_prediction_loss + q_value_prediction_loss + improvement_loss + regularization_loss
 
         logs.update({
             "loss_model_based": model_based_loss,
             "loss_reward_prediction": reward_prediction_loss,
             "loss_q_value_prediction": q_value_prediction_loss,
             "loss_improvement": improvement_loss,
+            "loss_regularization": regularization_loss,
+            "value_log_probs_mean": -action_log_probs.detach().mean(),
         })
 
         return ModelOutput(actions=None, loss=total_loss, logs=logs)
