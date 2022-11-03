@@ -59,7 +59,7 @@ class DirectTransformerBase(PolicyBase):
         observation and action
     - prediction error of the reward from the current observation and action
     - q-value prediction error: Q_t = r_t + gamma * (1 - terminal_t) * Q_{t+1}
-    - improvement error: log pi - Q
+    - improvement loss: -log_pi * Q
 
     So our model needs to predict
     - action mean (ac_dim,)
@@ -138,6 +138,11 @@ class DirectTransformerBase(PolicyBase):
 
         mask = ~trajectories.terminals
 
+        action_log_probs = actions_dist \
+            .log_prob(trajectories.actions) \
+            .view(L, -1) \
+            .sum(dim=-1, keepdim=True)
+
         # Model-based prediction error of the next observation from the current observation and action
         next_observation_prediction: torch.Tensor = model_output[:, acs_dim: acs_dim + obs_dim]
         assert next_observation_prediction.size() == (L, obs_dim)
@@ -156,13 +161,9 @@ class DirectTransformerBase(PolicyBase):
         assert q_value_prediction[1] == next_q_value_prediction[0]
         target_q_value = trajectories.rewards + gamma * mask * next_q_value_prediction
         assert target_q_value.size() == (L, 1)
-        q_value_prediction_loss = loss_fn(next_q_value_prediction, target_q_value.detach()).mean()
+        q_value_prediction_loss = loss_fn(q_value_prediction, target_q_value.detach()).mean()
 
-        # Improvement loss: log pi - Q
-        action_log_probs = actions_dist \
-            .log_prob(trajectories.actions) \
-            .view(L, -1) \
-            .sum(dim=-1, keepdim=True)
+        # Improvement loss: -log_pi * Q
         improvement_loss = (-action_log_probs * normalize(q_value_prediction.detach())).mean()
 
         total_loss = model_based_loss + reward_prediction_loss + q_value_prediction_loss + improvement_loss
