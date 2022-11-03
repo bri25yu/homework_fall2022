@@ -29,7 +29,7 @@ class ContrastiveTransformerV2Base(PolicyBase):
 
         # Create our model
         model_config = T5Config(
-            d_model=self.model_dim,
+            d_model=self.obs_dim,
             d_kv=64,
             dff=64,
             num_layers=1,

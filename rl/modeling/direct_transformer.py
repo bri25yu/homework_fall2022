@@ -114,7 +114,7 @@ class DirectTransformerBase(PolicyBase):
         if self.is_discrete:
             size_to_fill = acs_dim - 1
             actions = torch.cat((
-                actions,
+                actions.unsqueeze(1),
                 torch.zeros((L, size_to_fill), dtype=actions.dtype, device=actions.device),
             ), dim=1)
 
@@ -164,7 +164,7 @@ class DirectTransformerBase(PolicyBase):
         q_value_prediction_loss = loss_fn(q_value_prediction, target_q_value.detach()).mean()
 
         # Improvement loss: -log_pi * Q
-        improvement_loss = (-action_log_probs * normalize(q_value_prediction.detach())).mean()
+        improvement_loss = (-action_log_probs * normalize(q_value_prediction.detach())).sum()
 
         total_loss = model_based_loss + reward_prediction_loss + q_value_prediction_loss + improvement_loss
 
@@ -173,6 +173,7 @@ class DirectTransformerBase(PolicyBase):
             "loss_reward_prediction": reward_prediction_loss,
             "loss_q_value_prediction": q_value_prediction_loss,
             "loss_improvement": improvement_loss,
+            "value_log_probs_mean": -action_log_probs.detach().mean(),
         })
 
         return ModelOutput(actions=None, loss=total_loss, logs=logs)
