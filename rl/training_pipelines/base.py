@@ -131,7 +131,7 @@ class TrainingPipelineBase(ABC):
         steps = batch_size * max_episode_steps
         policy.eval()
 
-        trajectory = Trajectory(steps)
+        trajectory = Trajectory(steps, env)
         terminal = True  # We reset our env on the first step
 
         for current_step in trange(steps, desc="Stepping", leave=False):
