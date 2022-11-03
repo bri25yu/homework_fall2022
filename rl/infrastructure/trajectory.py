@@ -16,7 +16,7 @@ class Trajectory:
         self.L = L
 
         obs_shape = env.observation_space.shape
-        ac_shape = (1,) if isinstance(env.action_space, Discrete) else env.action_space.shape
+        ac_shape = () if isinstance(env.action_space, Discrete) else env.action_space.shape
 
         create = lambda shape: torch.zeros((self.L, *shape), dtype=TORCH_FLOAT_DTYPE, device=TORCH_DEVICE)
 
