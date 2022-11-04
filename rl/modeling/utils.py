@@ -136,11 +136,5 @@ def calculate_contrastive_q_values_update(q_values: Tensor, best_q_values: Param
 def get_log_probs_logs(log_probs: Tensor) -> Dict[str, Tensor]:
     log_probs = -log_probs.detach()
     return {
-        "value_log_probs": {
-            "mean": log_probs.mean(),
-            "max": log_probs.max(),
-            "min": log_probs.min(),
-            "p=0.1": -log(0.1),
-            "p=0.5": -log(0.5),
-        }
+        "value_log_probs_mean": log_probs.mean(),
     }
