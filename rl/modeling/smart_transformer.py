@@ -4,7 +4,7 @@ from torch.nn import HuberLoss
 
 from gym import Env
 
-from rl.infrastructure import Trajectory, ModelOutput, PolicyBase, build_log_std, build_transformer
+from rl.infrastructure import Trajectory, ModelOutput, PolicyBase, build_log_std, build_transformer, normalize
 from rl.modeling.utils import assert_shape, calculate_log_probs, get_log_probs_logs
 
 
@@ -13,10 +13,10 @@ __all__ = ["SmartTransformerBase"]
 
 class SmartTransformerOutput:
     def __init__(self, model_output: Tensor, obs_dim: int, acs_dim: int) -> None:
-        self.next_obs: Tensor = model_output[: obs_dim]
-        self.action_mean: Tensor = model_output[obs_dim: obs_dim + acs_dim]
-        self.reward: Tensor = model_output[obs_dim + acs_dim: obs_dim + acs_dim + 1]
-        self.q_values: Tensor = model_output[obs_dim + acs_dim + 1: obs_dim + acs_dim + 2]
+        self.next_obs: Tensor = model_output[:, : obs_dim]
+        self.action_mean: Tensor = model_output[:, obs_dim: obs_dim + acs_dim]
+        self.reward: Tensor = model_output[:, obs_dim + acs_dim: obs_dim + acs_dim + 1]
+        self.q_values: Tensor = model_output[:, obs_dim + acs_dim + 1: obs_dim + acs_dim + 2]
 
 
 class SmartTransformerBase(PolicyBase):
@@ -117,11 +117,9 @@ class SmartTransformerBase(PolicyBase):
         target_q_values = traj.rewards + gamma * mask * next_q_values_prediction
         q_value_prediction_loss = loss_fn(preds.q_values, target_q_values.detach()).mean()
 
-        imagined_preds = self._get_model_outputs(traj.observations, actions, traj.rewards, traj.terminals)
-        imagined_actions_dist = self.create_actions_distribution(imagined_preds.action_mean, self.log_std)
-        imagined_actions = imagined_actions_dist.rsample()
-        imagined_action_log_probs = calculate_log_probs(imagined_actions_dist, imagined_actions)
-        improvement_loss = (imagined_action_log_probs - imagined_preds.q_values).sum()
+        imagined_actions = actions_dist.rsample()
+        imagined_q_values = self._get_model_outputs(traj.observations, imagined_actions, traj.rewards, traj.terminals).q_values
+        improvement_loss = (-action_log_probs - imagined_q_values).mean()
 
         loss = model_based_loss + reward_prediction_loss + q_value_prediction_loss + improvement_loss
 
