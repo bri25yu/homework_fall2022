@@ -55,7 +55,7 @@ class ContrastiveTransformerBase(PolicyBase):
         )
 
         advantages = normalize(q_vals - corresponding_best_q_vals)
-        loss = (-action_log_probs.mean()) + (-action_log_probs * advantages.detach()).sum()
+        loss = (-action_log_probs * advantages.detach()).sum()
 
         logs = {
             "value_best_q_val_0": self.best_q_vals.data[0].detach(),
