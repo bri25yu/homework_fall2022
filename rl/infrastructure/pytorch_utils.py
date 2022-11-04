@@ -123,10 +123,10 @@ class T5ForReinforcementLearning(T5PreTrainedModel):
 
 
 def build_transformer(transformer_config: Union[None, T5Config]=None, model_dim: int=None) -> nn.Module:
-    assert transformer_config or model_config, "Must provide either a config or a model dimension"
+    assert transformer_config or model_dim, "Must provide either a config or a model dimension"
 
     if transformer_config is None:  # Default model
-        model_config = T5Config(
+        transformer_config = T5Config(
             d_model=model_dim,
             d_kv=64,
             dff=64,
@@ -135,4 +135,4 @@ def build_transformer(transformer_config: Union[None, T5Config]=None, model_dim:
             num_heads=4,
         )
 
-    return T5ForReinforcementLearning(model_config)
+    return T5ForReinforcementLearning(transformer_config)

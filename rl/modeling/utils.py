@@ -121,8 +121,8 @@ def calculate_contrastive_q_values_update(q_values: Tensor, best_q_values: Param
     corresponding_index = 0
     for i in arange(L):
         corresponding_best_q_values[i] = best_q_values[corresponding_index]
-        corresponding_index = (corresponding_index + 1) * mask[i]
         new_best_q_values[corresponding_index] = max(new_best_q_values[corresponding_index], q_values[i])
+        corresponding_index = (corresponding_index + 1) * mask[i]
 
     assert_shape(corresponding_best_q_values, (L, 1))
     assert_shape(new_best_q_values, (max_L, 1))
