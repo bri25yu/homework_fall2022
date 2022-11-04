@@ -13,7 +13,7 @@ class ContrastiveTransformerExperimentBase(OffPolicyTrainingPipelineBase):
 class ContrastiveTransformerCartPoleExperiment(ContrastiveTransformerExperimentBase):
     TRAIN_STEPS = 100
     EVAL_STEPS = 1
-    LEARNING_RATE = 5e-3
+    LEARNING_RATE = 2e-2
     TRAIN_BATCH_SIZE = 1
 
     def get_env(self) -> Env:

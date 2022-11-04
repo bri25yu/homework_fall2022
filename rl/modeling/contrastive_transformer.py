@@ -4,7 +4,7 @@ from torch.nn import Sequential, GELU, Linear
 from gym import Env
 
 from rl.infrastructure import Trajectory, ModelOutput, PolicyBase, normalize, build_log_std, build_transformer
-from rl.modeling.utils import assert_shape, calculate_log_probs, calculate_q_values, calculate_contrastive_q_values_update
+from rl.modeling.utils import assert_shape, calculate_log_probs, calculate_q_values, calculate_contrastive_q_values_update, get_log_probs_logs
 
 
 __all__ = ["ContrastiveTransformerBase"]
@@ -55,11 +55,11 @@ class ContrastiveTransformerBase(PolicyBase):
         )
 
         advantages = normalize(q_vals - corresponding_best_q_vals)
-        loss = (-action_log_probs * advantages.detach()).sum()
+        loss = (-action_log_probs.mean()) + (-action_log_probs * advantages.detach()).sum()
 
         logs = {
-            "value_log_probs_mean": -action_log_probs.detach().mean(),
             "value_best_q_val_0": self.best_q_vals.data[0].detach(),
+            **get_log_probs_logs(action_log_probs),
         }
 
         return ModelOutput(actions=None, loss=loss, logs=logs)

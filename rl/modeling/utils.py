@@ -1,9 +1,11 @@
 """
 A suite of commonly used modeling utils.
 """
-from typing import Any, Tuple
+from typing import Any, Dict, Tuple
 
 import inspect
+
+from numpy import log
 
 from torch import Tensor, arange, empty_like
 from torch.nn import Parameter
@@ -15,6 +17,7 @@ __all__ = [
     "calculate_log_probs",
     "calculate_q_values",
     "calculate_contrastive_q_values_update",
+    "get_log_probs_logs",
 ]
 
 
@@ -128,3 +131,16 @@ def calculate_contrastive_q_values_update(q_values: Tensor, best_q_values: Param
     assert_shape(new_best_q_values, (max_L, 1))
 
     return corresponding_best_q_values, new_best_q_values
+
+
+def get_log_probs_logs(log_probs: Tensor) -> Dict[str, Tensor]:
+    log_probs = -log_probs.detach()
+    return {
+        "value_log_probs": {
+            "mean": log_probs.mean(),
+            "max": log_probs.max(),
+            "min": log_probs.min(),
+            "p=0.1": -log(0.1),
+            "p=0.5": -log(0.5),
+        }
+    }

@@ -3,7 +3,7 @@ import torch
 from gym import Env
 
 from rl.infrastructure import Trajectory, ModelOutput, PolicyBase, normalize
-from rl.modeling.utils import assert_shape, calculate_log_probs, calculate_q_values, calculate_contrastive_q_values_update
+from rl.modeling.utils import assert_shape, calculate_log_probs, calculate_q_values, calculate_contrastive_q_values_update, get_log_probs_logs
 
 
 __all__ = ["ContrastiveBase"]
@@ -42,8 +42,8 @@ class ContrastiveBase(PolicyBase):
         loss = (-action_log_probs * advantages).sum()
 
         logs = {
-            "value_log_probs_mean": -action_log_probs.detach().mean(),
             "value_best_q_val_0": self.best_q_vals.data[0].detach(),
+            **get_log_probs_logs(action_log_probs),
         }
 
         return ModelOutput(actions=None, loss=loss, logs=logs)

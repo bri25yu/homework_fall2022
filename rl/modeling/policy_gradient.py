@@ -5,7 +5,7 @@ from gym import Env
 from rl.infrastructure import (
     Trajectory, ModelOutput, PolicyBase, build_ffn, FFNConfig, to_numpy, normalize
 )
-from rl.modeling.utils import assert_shape, calculate_log_probs, calculate_q_values
+from rl.modeling.utils import assert_shape, calculate_log_probs, calculate_q_values, get_log_probs_logs
 
 
 __all__ = ["PolicyGradientBase"]
@@ -52,7 +52,7 @@ class PolicyGradientBase(PolicyBase):
         logs = {
             "loss_policy": to_numpy(policy_loss),
             "loss_baseline": to_numpy(baseline_loss),
-            "value_log_probs_mean": -action_log_probs.detach().mean(),
+            **get_log_probs_logs(action_log_probs),
         }
 
         return ModelOutput(actions=None, loss=total_loss, logs=logs)
