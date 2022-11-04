@@ -1,13 +1,13 @@
 from gym import Env, make
 
-from rl.modeling.contrastive_transformer import ContrastiveTransformerV2Base
+from rl.modeling.contrastive_transformer import ContrastiveTransformerBase
 from rl.training_pipelines import OffPolicyTrainingPipelineBase
 from rl.infrastructure import PolicyBase
 
 
 class ContrastiveTransformerExperimentBase(OffPolicyTrainingPipelineBase):
     def get_policy(self, env: Env) -> PolicyBase:
-        return ContrastiveTransformerV2Base(env=env, gamma=0.99)
+        return ContrastiveTransformerBase(env=env, gamma=0.99)
 
 
 class ContrastiveTransformerCartPoleExperiment(ContrastiveTransformerExperimentBase):

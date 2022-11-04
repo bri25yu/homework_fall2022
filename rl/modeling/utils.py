@@ -33,26 +33,23 @@ def assert_shape(t: Tensor, expected_shape: Tuple) -> None:
     assert t.size() == expected_shape, f"Expected `{_get_name_in_parent_frame(t)}` of shape {expected_shape} but got {t.size()} instead"
 
 
-def calculate_log_probs(distribution: Distribution, t: Tensor) -> Tensor:
+def calculate_log_probs(action_distribution: Distribution, actions: Tensor) -> Tensor:
     """
-    Takes in a `distribution` and calculates the log probabilities of the input `t`
-
     Parameters
     ----------
-    t: Tensor of shape (L, *)
-        The dimensions of t must match that of distribution.
+    action_distribution: Distribution
+    actions: Tensor of shape (L, *)
+        The dimensions of actions must match that of action_distribution.
 
     Returns
     -------
     log_probs: Tensor of shape (L, 1)
 
     """
-    L = t.size()[0]
+    L = actions.size()[0]
 
-    assert_shape(t, (L, 1))
-
-    log_probs = distribution \
-        .log_prob(t) \
+    log_probs = action_distribution \
+        .log_prob(actions) \
         .view(L, -1) \
         .sum(dim=-1, keepdim=True)
 
