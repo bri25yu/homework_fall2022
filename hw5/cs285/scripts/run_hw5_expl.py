@@ -77,6 +77,8 @@ def main():
 
     parser.add_argument('--use_boltzmann', action='store_true')
 
+    parser.add_argument('--use_custom_exploration', action='store_true')
+
     args = parser.parse_args()
 
     # convert to dictionary

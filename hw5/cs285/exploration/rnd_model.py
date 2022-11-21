@@ -20,6 +20,7 @@ class RNDModel(nn.Module, BaseExplorationModel):
         self.output_size = hparams['rnd_output_size']
         self.n_layers = hparams['rnd_n_layers']
         self.size = hparams['rnd_size']
+        self.use_custom_exploration = hparams['use_custom_exploration']
         self.optimizer_spec = optimizer_spec
 
         # <DONE>: Create two neural networks:
@@ -48,9 +49,12 @@ class RNDModel(nn.Module, BaseExplorationModel):
         )
 
     def forward(self, ob_no):
-        # <DONE>: Get the prediction error for ob_no
-        # HINT: Remember to detach the output of self.f!
-        return ((self.f_hat(ob_no) - self.f(ob_no).detach()) ** 2).sum(dim=1, keepdims=True)
+        if not self.use_custom_exploration:
+            # <DONE>: Get the prediction error for ob_no
+            # HINT: Remember to detach the output of self.f!
+            return ((self.f_hat(ob_no) - self.f(ob_no).detach()) ** 2).sum(dim=1, keepdims=True)
+        else:
+            return ((self.f_hat(ob_no) - self.f(ob_no).detach()).abs()).sum(dim=1, keepdims=True)
 
     def forward_np(self, ob_no):
         ob_no = ptu.from_numpy(ob_no)
