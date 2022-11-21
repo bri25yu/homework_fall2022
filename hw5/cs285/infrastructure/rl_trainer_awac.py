@@ -5,6 +5,8 @@ import sys
 import time
 import pdb
 
+from tqdm import trange
+
 import gym
 from gym import wrappers
 import numpy as np
@@ -147,12 +149,8 @@ class RL_Trainer(object):
         self.total_envsteps = 0
         self.start_time = time.time()
 
-        print_period = 1000 if (isinstance(self.agent, AWACAgent) or isinstance(self.agent, IQLAgent)) else 1
-
-        for itr in range(n_iter):
-            if itr % print_period == 0:
-                print("\n\n********** Iteration %i ************"%itr)
-
+        desc = f"Training {self.params['exp_name']}_{self.params['env_name']}"
+        for itr in trange(n_iter, desc=desc):
             # decide if videos should be rendered/logged at this iteration
             if itr % self.params['video_log_freq'] == 0 and self.params['video_log_freq'] != -1:
                 self.logvideo = True
@@ -196,18 +194,11 @@ class RL_Trainer(object):
                     self.agent.add_to_replay_buffer(paths)
 
             # train agent (using sampled data from replay buffer)
-            if itr % print_period == 0:
-                print("\nTraining agent...")
             all_logs = self.train_agent()
-
-            # Log densities and output trajectories
-            if (isinstance(self.agent, AWACAgent) or isinstance(self.agent, IQLAgent)) and (itr % print_period == 0):
-                self.dump_density_graphs(itr)
 
             # log/save
             if self.logvideo or self.logmetrics:
                 # perform logging
-                print('\nBeginning logging procedure...')
                 if isinstance(self.agent, AWACAgent) or isinstance(self.agent, IQLAgent):
                     self.perform_dqn_logging(all_logs)
                 else:
@@ -215,6 +206,10 @@ class RL_Trainer(object):
 
                 if self.params['save_params']:
                     self.agent.save('{}/agent_itr_{}.pt'.format(self.params['logdir'], itr))
+
+        # Log densities and output trajectories
+        if (isinstance(self.agent, AWACAgent) or isinstance(self.agent, IQLAgent)):
+            self.dump_density_graphs(itr)
 
     ####################################
     ####################################
@@ -238,13 +233,11 @@ class RL_Trainer(object):
                 num_transitions_to_sample = self.params['batch_size_initial']
 
         # collect data to be used for training
-        print("\nCollecting data to be used for training...")
         paths, envsteps_this_batch = utils.sample_trajectories(self.env, collect_policy, num_transitions_to_sample, self.params['ep_len'])
 
         # collect more rollouts with the same policy, to be saved as videos in tensorboard
         train_video_paths = None
         if self.logvideo:
-            print('\nCollecting train rollouts to be used for saving videos...')
             train_video_paths = utils.sample_n_trajectories(self.env, collect_policy, MAX_NVIDEO, MAX_VIDEO_LEN, True)
 
         if save_expert_data_to_disk and itr == 0:
@@ -283,17 +276,13 @@ class RL_Trainer(object):
         logs = OrderedDict()
 
         logs["Train_EnvstepsSoFar"] = self.agent.t
-        print("Timestep %d" % (self.agent.t,))
         if self.mean_episode_reward > -5000:
             logs["Train_AverageReturn"] = np.mean(self.mean_episode_reward)
-        print("mean reward (100 episodes) %f" % self.mean_episode_reward)
         if self.best_mean_episode_reward > -5000:
             logs["Train_BestReturn"] = np.mean(self.best_mean_episode_reward)
-        print("best mean reward %f" % self.best_mean_episode_reward)
 
         if self.start_time is not None:
             time_since_start = (time.time() - self.start_time)
-            print("running time %f" % time_since_start)
             logs["TimeSinceStart"] = time_since_start
 
         logs.update(last_log)
@@ -311,12 +300,8 @@ class RL_Trainer(object):
         
         logs['Buffer size'] = self.agent.replay_buffer.num_in_buffer
 
-        sys.stdout.flush()
-
         for key, value in logs.items():
-            print('{} : {}'.format(key, value))
             self.logger.log_scalar(value, key, self.agent.t)
-        print('Done logging...\n\n')
 
         self.logger.flush()
 
@@ -327,16 +312,13 @@ class RL_Trainer(object):
         #######################
 
         # collect eval trajectories, for logging
-        print("\nCollecting data for eval...")
         eval_paths, eval_envsteps_this_batch = utils.sample_trajectories(self.env, eval_policy, self.params['eval_batch_size'], self.params['ep_len'])
 
         # save eval rollouts as videos in tensorboard event file
         if self.logvideo and train_video_paths != None:
-            print('\nCollecting video rollouts eval')
             eval_video_paths = utils.sample_n_trajectories(self.env, eval_policy, MAX_NVIDEO, MAX_VIDEO_LEN, True)
 
             #save train/eval videos
-            print('\nSaving train rollouts as videos...')
             self.logger.log_paths_as_videos(train_video_paths, itr, fps=self.fps, max_videos_to_save=MAX_NVIDEO,
                                             video_title='train_rollouts')
             self.logger.log_paths_as_videos(eval_video_paths, itr, fps=self.fps,max_videos_to_save=MAX_NVIDEO,
@@ -378,12 +360,10 @@ class RL_Trainer(object):
 
             # perform the logging
             for key, value in logs.items():
-                print('{} : {}'.format(key, value))
                 try:
                     self.logger.log_scalar(value, key, itr)
                 except:
                     pdb.set_trace()
-            print('Done logging...\n\n')
 
             self.logger.flush()
 

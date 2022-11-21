@@ -172,7 +172,8 @@ class RL_Trainer(object):
         self.start_time = time.time()
         self.timer = Timer(self.logger)
 
-        for itr in trange(n_iter, desc="Training agent"):
+        desc = f"Training {self.params['exp_name']}_{self.params['env_name']}"
+        for itr in trange(n_iter, desc=desc):
             # decide if videos should be rendered/logged at this iteration
             if itr % self.params['video_log_freq'] == 0 and self.params['video_log_freq'] != -1:
                 self.logvideo = True
