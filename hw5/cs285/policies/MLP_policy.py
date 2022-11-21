@@ -171,6 +171,10 @@ class MLPPolicyAWAC(MLPPolicy):
 
         # TODO update the policy network utilizing AWAC update
 
-        actor_loss = None
-        
+        action_dist: distributions.Distribution = self(observations)
+        log_probs = action_dist.log_prob(actions).sum(dim=1, keepdim=True)
+
+        assert log_probs.size() == adv_n.size(), (log_probs.size(), adv_n.size())
+        actor_loss = (log_probs * ((1 / self.lambda_awac) * adv_n).exp()).mean()
+
         return actor_loss.item()
