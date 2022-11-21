@@ -48,35 +48,42 @@ class AWACAgent(DQNAgent):
         self.normalize_rnd = normalize_rnd
         self.rnd_gamma = rnd_gamma
 
-    def get_qvals(self, critic, obs, action):
-        # get q-value for a given critic, obs, and action
-        return q_value
+    def estimate_advantage(self, ob_no, ac_na) -> torch.Tensor:
+        """
+        Parameters
+        ----------
+        ob_no: np.ndarray of shape (batch_size, ob_dim)
+        ac_na: np.ndarray of shape (batch_size, 1) for the discrete case
 
-    def estimate_advantage(self, ob_no, ac_na, re_n, next_ob_no, terminal_n, n_actions=10):
-        # re_n and terminal_n aren't used
+        Returns
+        -------
+        advantages: np.ndarray of shape (batch_size, 1)
 
-        # TODO: Calculate and return the advantage (n sample estimate) 
-        # TODO convert to torch tensors
-        ob_no_pt = ptu.from_numpy(ob_no)
+        """
+        # We only implement the discrete case
+        assert self.agent_params['discrete']
 
-        # HINT: store computed values in the provided vals list. You will use the average of this list for calculating the advantage.
-        vals = []
-        # TODO: get action distribution for current obs, you will use this for the value function estimate
-        dist = self.awac_actor(ob_no_pt)
-        # TODO Calculate Value Function Estimate given current observation
-        # HINT: You may find it helpful to utilze get_qvals defined above
-        if self.agent_params['discrete']:
-            for i in range(self.agent_params['ac_dim']):
-                pass
-        else:
-            for _ in range(n_actions):
-                pass
-        v_pi = None
+        batch_size = ob_no.shape[0]
+        ac_dim = self.agent_params['ac_dim']
+        assert ac_dim == 1, ac_dim
+        assert ac_na.shape == (batch_size, ac_dim), ac_na.shape
 
-        # TODO Calculate Q-Values
-        q_vals = self.actor.critic.qa_values(o)
-        # TODO Calculate the Advantage using q_vals and v_pi  
-        return None
+        qa_vals = self.actor.critic.qa_values(ob_no)  # (batch_size, ac_dim)
+
+        actions = torch.arange(ac_dim).reshape(1, -1, 1).repeat(batch_size, 1, 1)  # (batch_size, ac_dim, 1)
+        assert actions.size() == (batch_size, ac_dim, 1), actions.size()
+
+        dist = self.awac_actor(ptu.from_numpy(ob_no))
+        log_probs = dist.log_prob(actions).sum(dim=2)  # (batch_size, ac_dim)
+        assert log_probs.size() == (batch_size, ac_dim), log_probs.size()
+
+        v_pi = (log_probs * qa_vals).sum(dim=1, keepdim=True)  # (batch_size, 1)
+        q_vals = torch.gather(qa_vals, 1, ac_na.unsqueeze(1))
+        assert v_pi.size() == q_vals.size() == (batch_size, 1), (v_pi.size(), q_vals.size())
+
+        advantages = q_vals - v_pi  # (batch_size, 1)
+
+        return ptu.to_numpy(advantages)
 
     def train(self, ob_no, ac_na, re_n, next_ob_no, terminal_n):
         log = {}
@@ -132,7 +139,7 @@ class AWACAgent(DQNAgent):
             # TODO: update actor
             # 1): Estimate the advantage
             # 2): Calculate the awac actor loss
-            advantage = self.estimate_advantage(ob_no, ac_na, re_n, next_ob_no, terminal_n)
+            advantage = self.estimate_advantage(ob_no, ac_na)
             actor_loss = self.awac_actor.update(ob_no, ac_na, advantage)
 
             # TODO: Update Target Networks #

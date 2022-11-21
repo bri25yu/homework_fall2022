@@ -159,22 +159,24 @@ class MLPPolicyAWAC(MLPPolicy):
         self.lambda_awac = lambda_awac
         super().__init__(ac_dim, ob_dim, n_layers, size, discrete, learning_rate, training, nn_baseline, **kwargs)
     
-    def update(self, observations, actions, adv_n=None):
-        if adv_n is None:
-            assert False
-        if isinstance(observations, np.ndarray):
-            observations = ptu.from_numpy(observations)
-        if isinstance(actions, np.ndarray):
-            actions = ptu.from_numpy(actions)
-        if isinstance(adv_n, np.ndarray):
-            adv_n = ptu.from_numpy(adv_n)
+    def update(self, observations, actions, advantages=None):
+        """
+        observations: np.ndarray of shape (batch_size, ob_dim)
+        actions: np.ndarray of shape (batch_size, ac_dim)
+        advadvantages_n: np.ndarray of shape (batch_size, 1)
+        """
+        assert advantages is not None
+
+        observations = ptu.from_numpy(observations)
+        actions = ptu.from_numpy(actions)
+        advantages = ptu.from_numpy(advantages)
 
         # TODO update the policy network utilizing AWAC update
 
         action_dist: distributions.Distribution = self(observations)
         log_probs = action_dist.log_prob(actions).sum(dim=1, keepdim=True)
 
-        assert log_probs.size() == adv_n.size(), (log_probs.size(), adv_n.size())
-        actor_loss = (log_probs * ((1 / self.lambda_awac) * adv_n).exp()).mean()
+        assert log_probs.size() == advantages.size(), (log_probs.size(), advantages.size())
+        actor_loss = (log_probs * ((1 / self.lambda_awac) * advantages).exp()).mean()
 
         return actor_loss.item()
