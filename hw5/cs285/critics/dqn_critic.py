@@ -73,15 +73,18 @@ class DQNCritic(BaseCritic):
         else:
             q_tp1, _ = qa_tp1_values.max(dim=1)
 
+        assert reward_n.shape == q_tp1.shape, (reward_n.shape, q_tp1.shape)
         target = reward_n + self.gamma * q_tp1 * (1 - terminal_n)
         target = target.detach()
+
+        assert q_t_values.shape == target.shape, (q_t_values.shape, target.shape)
         loss = self.loss(q_t_values, target)
-    
+
         self.optimizer.zero_grad()
         loss.backward()
         utils.clip_grad_value_(self.q_net.parameters(), self.grad_norm_clipping)
         self.optimizer.step()
-        
+
         self.learning_rate_scheduler.step()
 
         return {'Training Loss': ptu.to_numpy(loss)}

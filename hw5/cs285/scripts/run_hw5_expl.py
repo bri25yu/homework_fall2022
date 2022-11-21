@@ -1,6 +1,9 @@
 import os
 import time
 
+from gym.logger import set_level, ERROR
+set_level(ERROR)
+
 from cs285.infrastructure.rl_trainer import RL_Trainer
 from cs285.agents.explore_or_exploit_agent import ExplorationOrExploitationAgent
 from cs285.infrastructure.dqn_utils import get_env_kwargs, PiecewiseSchedule, ConstantSchedule
@@ -123,8 +126,6 @@ def main():
     params['logdir'] = logdir
     if not(os.path.exists(logdir)):
         os.makedirs(logdir)
-
-    print("\n\n\nLOGGING TO: ", logdir, "\n\n\n")
 
     trainer = Q_Trainer(params)
     trainer.run_training_loop()

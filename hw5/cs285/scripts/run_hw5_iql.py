@@ -131,8 +131,6 @@ def main():
     if not(os.path.exists(logdir)):
         os.makedirs(logdir)
 
-    print("\n\n\nLOGGING TO: ", logdir, "\n\n\n")
-
     trainer = Q_Trainer(params)
     trainer.run_training_loop()
 

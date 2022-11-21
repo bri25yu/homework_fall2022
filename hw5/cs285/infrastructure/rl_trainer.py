@@ -5,6 +5,10 @@ import sys
 import time
 import pdb
 
+from collections import defaultdict
+
+from tqdm import trange
+
 import gym
 from gym import wrappers
 import numpy as np
@@ -27,6 +31,26 @@ import cs285.envs
 # how many rollouts to save as videos to tensorboard
 MAX_NVIDEO = 2
 MAX_VIDEO_LEN = 40 # we overwrite this in the code below
+
+
+class Timer:
+    def __init__(self, logger) -> None:
+        self.logger = logger
+        self.start_time = time.time()
+        self.times = defaultdict(lambda: 0.0)
+
+    def start(self, value: str) -> None:
+        self.times[value] -= time.time()
+
+    def stop(self, value: str) -> None:
+        self.times[value] += time.time()
+
+    def log(self, itr: int) -> None:
+        total_time = time.time() - self.start_time
+
+        for value_name, value_time in self.times.items():
+            value_time_percent = value_time * 100 / total_time
+            self.logger.log_scalar(value_time_percent, f"TimePercent{value_name}", itr)
 
 
 class RL_Trainer(object):
@@ -146,13 +170,9 @@ class RL_Trainer(object):
         # init vars at beginning of training
         self.total_envsteps = 0
         self.start_time = time.time()
+        self.timer = Timer(self.logger)
 
-        print_period = 1000 if isinstance(self.agent, ExplorationOrExploitationAgent) else 1
-
-        for itr in range(n_iter):
-            if itr % print_period == 0:
-                print("\n\n********** Iteration %i ************"%itr)
-
+        for itr in trange(n_iter, desc="Training agent"):
             # decide if videos should be rendered/logged at this iteration
             if itr % self.params['video_log_freq'] == 0 and self.params['video_log_freq'] != -1:
                 self.logvideo = True
@@ -168,8 +188,9 @@ class RL_Trainer(object):
                 self.logmetrics = False
 
             # collect trajectories, to be used for training
+            self.timer.start("CollectTrajectories")
             if isinstance(self.agent, ExplorationOrExploitationAgent):
-                self.agent.step_env()
+                self.agent.step_env(self.timer)
                 envsteps_this_batch = 1
                 train_video_paths = None
                 paths = None
@@ -181,8 +202,8 @@ class RL_Trainer(object):
                     self.collect_training_trajectories(
                         itr, initial_expertdata, collect_policy, use_batchsize)
                 )
+            self.timer.stop("CollectTrajectories")
 
-            
             if (not self.agent.offline_exploitation) or (self.agent.t <= self.agent.num_exploration_steps):
                 self.total_envsteps += envsteps_this_batch
 
@@ -196,18 +217,14 @@ class RL_Trainer(object):
                     self.agent.add_to_replay_buffer(paths)
 
             # train agent (using sampled data from replay buffer)
-            if itr % print_period == 0:
-                print("\nTraining agent...")
+            self.timer.start("TrainAgentTotal")
             all_logs = self.train_agent()
-
-            # Log densities and output trajectories
-            if isinstance(self.agent, ExplorationOrExploitationAgent) and (itr % print_period == 0):
-                self.dump_density_graphs(itr)
+            self.timer.stop("TrainAgentTotal")
 
             # log/save
+            self.timer.start("Logging")
             if self.logvideo or self.logmetrics:
                 # perform logging
-                print('\nBeginning logging procedure...')
                 if isinstance(self.agent, ExplorationOrExploitationAgent):
                     self.perform_dqn_logging(all_logs)
                 else:
@@ -215,6 +232,13 @@ class RL_Trainer(object):
 
                 if self.params['save_params']:
                     self.agent.save('{}/agent_itr_{}.pt'.format(self.params['logdir'], itr))
+            self.timer.stop("Logging")
+
+            self.timer.log(itr)
+
+        # Log densities and output trajectories
+        if isinstance(self.agent, ExplorationOrExploitationAgent):
+            self.dump_density_graphs(itr)
 
     ####################################
     ####################################
@@ -283,17 +307,13 @@ class RL_Trainer(object):
         logs = OrderedDict()
 
         logs["Train_EnvstepsSoFar"] = self.agent.t
-        print("Timestep %d" % (self.agent.t,))
         if self.mean_episode_reward > -5000:
             logs["Train_AverageReturn"] = np.mean(self.mean_episode_reward)
-        print("mean reward (100 episodes) %f" % self.mean_episode_reward)
         if self.best_mean_episode_reward > -5000:
             logs["Train_BestReturn"] = np.mean(self.best_mean_episode_reward)
-        print("best mean reward %f" % self.best_mean_episode_reward)
 
         if self.start_time is not None:
             time_since_start = (time.time() - self.start_time)
-            print("running time %f" % time_since_start)
             logs["TimeSinceStart"] = time_since_start
 
         logs.update(last_log)
@@ -308,15 +328,11 @@ class RL_Trainer(object):
         logs["Eval_MaxReturn"] = np.max(eval_returns)
         logs["Eval_MinReturn"] = np.min(eval_returns)
         logs["Eval_AverageEpLen"] = np.mean(eval_ep_lens)
-        
+
         logs['Buffer size'] = self.agent.replay_buffer.num_in_buffer
 
-        sys.stdout.flush()
-
         for key, value in logs.items():
-            print('{} : {}'.format(key, value))
             self.logger.log_scalar(value, key, self.agent.t)
-        print('Done logging...\n\n')
 
         self.logger.flush()
 
@@ -389,7 +405,9 @@ class RL_Trainer(object):
 
     def dump_density_graphs(self, itr):
         import matplotlib.pyplot as plt
-        self.fig = plt.figure()
+
+        if not hasattr(self, "fig"):
+            self.fig = plt.figure()
         filepath = lambda name: self.params['logdir']+'/curr_{}.png'.format(name)
 
         num_states = self.agent.replay_buffer.num_in_buffer - 2
