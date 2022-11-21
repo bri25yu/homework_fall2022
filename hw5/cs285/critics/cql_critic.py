@@ -101,7 +101,7 @@ class CQLCritic(BaseCritic):
         terminal_n = ptu.from_numpy(terminal_n)
 
         # Compute the DQN Loss 
-        loss, qa_t_values, q_t_values = self.dqn_loss(
+        dqn_loss, qa_t_values, q_t_values = self.dqn_loss(
             ob_no, ac_na, next_ob_no, reward_n, terminal_n
         )
 
@@ -109,9 +109,10 @@ class CQLCritic(BaseCritic):
         # TODO: Implement CQL as described in the pdf and paper
         # Hint: After calculating cql_loss, augment the loss appropriately
         q_t_logsumexp = qa_t_values.logsumexp(dim=1)
+        assert q_t_logsumexp.size() == q_t_values.size(), (q_t_logsumexp.size(), q_t_values.size())
         cql_loss = self.cql_alpha * (q_t_logsumexp - q_t_values).mean()
 
-        total_loss = loss + cql_loss
+        total_loss = dqn_loss + cql_loss
 
         self.optimizer.zero_grad()
         total_loss.backward()
@@ -119,14 +120,13 @@ class CQLCritic(BaseCritic):
         self.optimizer.step()
         self.learning_rate_scheduler.step()
 
-        info = {'Training Loss': ptu.to_numpy(loss)}
-
-        # TODO: Uncomment these lines after implementing CQL
-        info['CQL Loss'] = ptu.to_numpy(cql_loss)
-        info['Data q-values'] = ptu.to_numpy(q_t_values).mean()
-        info['OOD q-values'] = ptu.to_numpy(q_t_logsumexp).mean()
-
-        return info
+        return {
+            'Training Loss': ptu.to_numpy(total_loss),
+            'CQL Loss': ptu.to_numpy(cql_loss),
+            'DQN Loss': ptu.to_numpy(dqn_loss),
+            'Data q-values': ptu.to_numpy(q_t_values).mean(),
+            'OOD q-values': ptu.to_numpy(q_t_logsumexp).mean(),
+        }
 
     def update_target_network(self):
         for target_param, param in zip(
