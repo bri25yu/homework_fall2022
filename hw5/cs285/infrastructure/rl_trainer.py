@@ -190,7 +190,7 @@ class RL_Trainer(object):
             # collect trajectories, to be used for training
             self.timer.start("CollectTrajectories")
             if isinstance(self.agent, ExplorationOrExploitationAgent):
-                self.agent.step_env(self.timer)
+                self.agent.step_env()
                 envsteps_this_batch = 1
                 train_video_paths = None
                 paths = None
