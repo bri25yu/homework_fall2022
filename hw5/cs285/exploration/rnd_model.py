@@ -20,7 +20,7 @@ class RNDModel(nn.Module, BaseExplorationModel):
         self.output_size = hparams['rnd_output_size']
         self.n_layers = hparams['rnd_n_layers']
         self.size = hparams['rnd_size']
-        self.use_custom_exploration = hparams['use_custom_exploration']
+        self.use_custom_exploration = hparams.get('use_custom_exploration', False)
         self.optimizer_spec = optimizer_spec
 
         # <DONE>: Create two neural networks:

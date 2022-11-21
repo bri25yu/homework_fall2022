@@ -1,6 +1,9 @@
 import os
 import time
 
+from gym.logger import set_level, ERROR
+set_level(ERROR)
+
 from cs285.infrastructure.rl_trainer_awac import RL_Trainer
 from cs285.agents.iql_agent import IQLAgent
 from cs285.infrastructure.dqn_utils import get_env_kwargs, PiecewiseSchedule, ConstantSchedule
