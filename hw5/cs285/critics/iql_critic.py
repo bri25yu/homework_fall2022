@@ -69,11 +69,10 @@ class IQLCritic(BaseCritic):
         """
         ob_no = ptu.from_numpy(ob_no)
         ac_na = ptu.from_numpy(ac_na).to(torch.long)
-        
 
         ### YOUR CODE HERE ###
         value_loss = None
-        
+
         assert value_loss.shape == ()
         self.v_optimizer.zero_grad()
         value_loss.backward()
@@ -82,7 +81,6 @@ class IQLCritic(BaseCritic):
         self.learning_rate_scheduler_v.step()
 
         return {'Training V Loss': ptu.to_numpy(value_loss)}
-
 
     def update_q(self, ob_no, ac_na, next_ob_no, reward_n, terminal_n):
         """
@@ -93,7 +91,7 @@ class IQLCritic(BaseCritic):
         next_ob_no = ptu.from_numpy(next_ob_no)
         reward_n = ptu.from_numpy(reward_n)
         terminal_n = ptu.from_numpy(terminal_n)
-        
+
         ### YOUR CODE HERE ###
         loss = None
 
