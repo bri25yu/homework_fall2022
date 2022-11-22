@@ -65,16 +65,14 @@ class AWACAgent(DQNAgent):
 
         batch_size = ob_no.shape[0]
         ac_dim = self.agent_params['ac_dim']
-        assert ac_dim == 1, ac_dim
-        assert ac_na.shape == (batch_size, ac_dim), ac_na.shape
 
         qa_vals = self.actor.critic.qa_values(ob_no)  # (batch_size, ac_dim)
 
-        actions = torch.arange(ac_dim).reshape(1, -1, 1).repeat(batch_size, 1, 1)  # (batch_size, ac_dim, 1)
-        assert actions.size() == (batch_size, ac_dim, 1), actions.size()
+        actions = torch.arange(ac_dim).reshape(1, -1).repeat(batch_size, 1)  # (batch_size, ac_dim)
+        assert actions.size() == (batch_size, ac_dim), actions.size()
 
         dist = self.awac_actor(ptu.from_numpy(ob_no))
-        log_probs = dist.log_prob(actions).sum(dim=2)  # (batch_size, ac_dim)
+        log_probs = dist.log_prob(actions)  # (batch_size, ac_dim)
         assert log_probs.size() == (batch_size, ac_dim), log_probs.size()
 
         v_pi = (log_probs * qa_vals).sum(dim=1, keepdim=True)  # (batch_size, 1)
