@@ -180,4 +180,8 @@ class MLPPolicyAWAC(MLPPolicy):
         assert log_probs.size() == advantages.size() == (batch_size, 1), (log_probs.size(), advantages.size())
         actor_loss = (-log_probs * ((self.lambda_awac_inv * advantages).exp())).mean()
 
+        self.optimizer.zero_grad()
+        actor_loss.backward()
+        self.optimizer.step()
+
         return actor_loss.item()
