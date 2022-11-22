@@ -163,10 +163,11 @@ class MLPPolicyAWAC(MLPPolicy):
         """
         observations: np.ndarray of shape (batch_size, ob_dim)
         actions: np.ndarray of shape (batch_size, ac_dim)
-        advadvantages_n: np.ndarray of shape (batch_size, 1)
+        advantages: np.ndarray of shape (batch_size, 1)
         """
         assert advantages is not None
 
+        batch_size = observations.shape[0]
         observations = ptu.from_numpy(observations)
         actions = ptu.from_numpy(actions)
         advantages = ptu.from_numpy(advantages)
@@ -174,9 +175,9 @@ class MLPPolicyAWAC(MLPPolicy):
         # TODO update the policy network utilizing AWAC update
 
         action_dist: distributions.Distribution = self(observations)
-        log_probs = action_dist.log_prob(actions).sum(dim=1, keepdim=True)
+        log_probs = action_dist.log_prob(actions).reshape(-1, 1)
 
-        assert log_probs.size() == advantages.size(), (log_probs.size(), advantages.size())
+        assert log_probs.size() == advantages.size() == (batch_size, 1), (log_probs.size(), advantages.size())
         actor_loss = (log_probs * ((1 / self.lambda_awac) * advantages).exp()).mean()
 
         return actor_loss.item()

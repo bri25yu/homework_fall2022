@@ -64,18 +64,14 @@ class AWACAgent(DQNAgent):
         assert self.agent_params['discrete']
 
         batch_size = ob_no.shape[0]
-        ac_dim = self.agent_params['ac_dim']
+        ob_no = ptu.from_numpy(ob_no)
+        ac_na = ptu.from_numpy(ac_na).long()
 
-        qa_vals = self.actor.critic.qa_values(ob_no)  # (batch_size, ac_dim)
+        qa_vals = self.actor.critic.q_net(ob_no)
 
-        actions = torch.arange(ac_dim).reshape(1, -1).repeat(batch_size, 1)  # (batch_size, ac_dim)
-        assert actions.size() == (batch_size, ac_dim), actions.size()
+        dist = self.awac_actor(ob_no)
 
-        dist = self.awac_actor(ptu.from_numpy(ob_no))
-        log_probs = dist.log_prob(actions)  # (batch_size, ac_dim)
-        assert log_probs.size() == (batch_size, ac_dim), log_probs.size()
-
-        v_pi = (log_probs * qa_vals).sum(dim=1, keepdim=True)  # (batch_size, 1)
+        v_pi = (dist.logits * qa_vals).sum(dim=1, keepdim=True)  # (batch_size, 1)
         q_vals = torch.gather(qa_vals, 1, ac_na.unsqueeze(1))
         assert v_pi.size() == q_vals.size() == (batch_size, 1), (v_pi.size(), q_vals.size())
 
@@ -137,7 +133,8 @@ class AWACAgent(DQNAgent):
             # TODO: update actor
             # 1): Estimate the advantage
             # 2): Calculate the awac actor loss
-            advantage = self.estimate_advantage(ob_no, ac_na)
+            with torch.no_grad():
+                advantage = self.estimate_advantage(ob_no, ac_na)
             actor_loss = self.awac_actor.update(ob_no, ac_na, advantage)
 
             # TODO: Update Target Networks #
