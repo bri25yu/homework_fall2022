@@ -46,6 +46,7 @@ class IQLCritic(BaseCritic):
         # HINT: see Q_net definition above and optimizer below
         ### YOUR CODE HERE ###
         self.v_net = network_initializer(self.ob_dim, 1)
+        self.v_net.to(ptu.device)
 
         self.v_optimizer = self.optimizer_spec.constructor(
             self.v_net.parameters(),
@@ -61,7 +62,7 @@ class IQLCritic(BaseCritic):
         """
         Implement expectile loss on the difference between q and v
         """
-        pass
+        return (self.iql_expectile - diff.le(0).float()).abs() * diff.pow(2)
 
     def update_v(self, ob_no, ac_na):
         """
@@ -72,16 +73,13 @@ class IQLCritic(BaseCritic):
         ac_na = ptu.from_numpy(ac_na).to(torch.long)
 
         ### YOUR CODE HERE ###
-        def l_2_tau(mu: torch.Tensor) -> torch.Tensor:
-            return (self.iql_expectile - (mu <= 0).float()).abs()
-
         with torch.no_grad():
-            qa_values = self.q_net(ob_no)  # (batch_size, ac_dim)
+            qa_values = self.q_net_target(ob_no)  # (batch_size, ac_dim)
             q_values = torch.gather(qa_values, 1, ac_na.unsqueeze(1))  # (batch_size, 1)
         values = self.v_net(ob_no)  # (batch_size, 1)
         assert q_values.size() == values.size() == (batch_size, 1), (q_values.size(), values.size())
 
-        value_loss = l_2_tau(q_values - values).mean()
+        value_loss = self.expectile_loss(q_values - values).mean()
 
         assert value_loss.shape == ()
         self.v_optimizer.zero_grad()
@@ -105,7 +103,7 @@ class IQLCritic(BaseCritic):
 
         ### YOUR CODE HERE ###
         with torch.no_grad():
-            values_tp1 = self.v_net(ob_no).squeeze()  # (batch_size,)
+            values_tp1 = self.v_net(next_ob_no).squeeze()  # (batch_size,)
             q_target = reward_n + self.gamma * (1 - terminal_n) * values_tp1
         qa_values = self.q_net(ob_no)  # (batch_size, ac_dim)
         q_values = torch.gather(qa_values, 1, ac_na.unsqueeze(1)).squeeze()  # (batch_size,)

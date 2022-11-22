@@ -1,6 +1,6 @@
 #!/bin/bash
 
-awac_lambda=0.1
+awac_lambda=1.0
 iql_expectile=0.5
 
 python cs285/scripts/run_hw5_iql.py --env_name PointmassEasy-v0 \

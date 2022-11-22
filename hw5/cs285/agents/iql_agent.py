@@ -57,15 +57,14 @@ class IQLAgent(DQNAgent):
             q_value = torch.gather(qa_values, 1, action.type(torch.int64).unsqueeze(1))
         return q_value
 
-    def estimate_advantage(self, ob_no, ac_na, re_n, next_ob_no, terminal_n, n_actions=10):
+    def estimate_advantage(self, ob_no, ac_na):
         ob_no = ptu.from_numpy(ob_no)
         ac_na = ptu.from_numpy(ac_na)
-        re_n = ptu.from_numpy(re_n)
-        next_ob_no = ptu.from_numpy(next_ob_no)
-        terminal_n = ptu.from_numpy(terminal_n)
 
         v_pi = self.get_qvals(self.exploitation_critic, ob_no, use_v=True)
-        return self.get_qvals(self.exploitation_critic, ob_no, ac_na) - v_pi
+        advantage = self.get_qvals(self.exploitation_critic, ob_no, ac_na) - v_pi
+
+        return ptu.to_numpy(advantage)
 
     def train(self, ob_no, ac_na, re_n, next_ob_no, terminal_n):
         log = {}
