@@ -16,7 +16,7 @@ do
 
     # Medium, unsupervised
     python cs285/scripts/run_hw5_awac.py --env_name PointmassMedium-v0 \
-    --exp_name q4_awac_medium_unsupervised_lam{} --unsupervised_exploration --use_rnd --num_exploration_steps=20000 \
+    --exp_name q4_awac_medium_unsupervised_lam"$lambda" --unsupervised_exploration --use_rnd --num_exploration_steps=20000 \
     --awac_lambda="$lambda" --unsupervised_exploration
 
     # Medium, supervised

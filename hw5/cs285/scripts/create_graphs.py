@@ -126,5 +126,94 @@ def q1_2():
     fig.savefig("report_resources/q1_2.png")
 
 
+def q2_1():
+    configs = [
+        ("DQN", "hw5_expl_q2_dqn_PointmassMedium"),
+        ("DQN shifted and scaled", "hw5_expl_q2_dqn_scaled_PointmassMedium"),
+        ("CQL", "hw5_expl_q2_cql_PointmassMedium"),
+    ]
+    properties = ["Eval_AverageReturn", "Exploitation_Data_q-values", "Exploitation_OOD_q-values"]
+
+    rows, cols = 1, len(properties)
+    fig, axs = plt.subplots(rows, cols, figsize=(10 * cols, 8 * rows))
+
+    for property_to_plot, ax in zip(properties, axs):
+        for config_name, config_prefix in configs:
+            steps, eval_returns = get_property_and_steps(config_prefix, property_to_plot)
+
+            ax.plot(steps, eval_returns, label=config_name)
+
+        ax.set_title(property_to_plot.replace("_", " "))
+        ax.set_xlabel("Train iterations")
+        ax.legend()
+
+    fig.suptitle("Comparison of DQN and CQL offline learning on exploration data on PointmassMedium environment")
+    fig.tight_layout()
+    fig.savefig("report_resources/q2_1.png")
+
+
+def q2_2():
+    generic_prefix = "hw5_expl_q2"
+    env_name = "PointmassMedium"
+    configs = [
+        ("CQL 5k exploration steps", "cql_numsteps_5000"),
+        ("CQL 10k exploration steps", "cql"),
+        ("CQL 15k exploration steps", "cql_numsteps_15000"),
+
+        ("DQN 5k exploration steps", "dqn_numsteps_5000"),
+        ("DQN 10k exploration steps", "dqn"),
+        ("DQN 15k exploration steps", "dqn_numsteps_15000"),
+
+        ("DQN shifted and scaled 5k exploration steps", "dqn_scaled_numsteps_5000"),
+        ("DQN shifted and scaled 10k exploration steps", "dqn_scaled"),
+        ("DQN shifted and scaled 15k exploration steps", "dqn_scaled_numsteps_15000"),
+    ]
+    properties = ["Eval_AverageReturn", "Exploitation_Data_q-values", "Exploitation_OOD_q-values"]
+
+    rows, cols = 1, len(properties)
+    fig, axs = plt.subplots(rows, cols, figsize=(10 * cols, 8 * rows))
+
+    for property_to_plot, ax in zip(properties, axs):
+        for config_name, config_prefix in configs:
+            config_prefix = f"{generic_prefix}_{config_prefix}_{env_name}"
+            steps, eval_returns = get_property_and_steps(config_prefix, property_to_plot)
+
+            ax.plot(steps, eval_returns, label=config_name)
+
+        ax.set_title(property_to_plot.replace("_", " "))
+        ax.set_xlabel("Train iterations")
+        ax.legend()
+
+    fig.suptitle("Effect of num exploration steps on DQN and CQL")
+    fig.tight_layout()
+    fig.savefig("report_resources/q2_2.png")
+
+
+def q2_3():
+    configs = [
+        ("alpha=0.02", "hw5_expl_q2_alpha0.02_PointmassMedium"),
+        ("alpha=0.1", "hw5_expl_q2_cql_PointmassMedium"),
+        ("alpha=0.5", "hw5_expl_q2_alpha0.5_PointmassMedium"),
+    ]
+    properties = ["Eval_AverageReturn", "Exploitation_Data_q-values", "Exploitation_OOD_q-values"]
+
+    rows, cols = 1, len(properties)
+    fig, axs = plt.subplots(rows, cols, figsize=(10 * cols, 8 * rows))
+
+    for property_to_plot, ax in zip(properties, axs):
+        for config_name, config_prefix in configs:
+            steps, eval_returns = get_property_and_steps(config_prefix, property_to_plot)
+
+            ax.plot(steps, eval_returns, label=config_name)
+
+        ax.set_title(property_to_plot.replace("_", " "))
+        ax.set_xlabel("Train iterations")
+        ax.legend()
+
+    fig.suptitle("Ablation of CQL over alpha")
+    fig.tight_layout()
+    fig.savefig("report_resources/q2_3.png")
+
+
 if __name__ == "__main__":
-    q1_2()
+    q2_3()
