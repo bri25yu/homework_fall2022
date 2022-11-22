@@ -103,5 +103,28 @@ def q1_1():
     fig.savefig("report_resources/q1_1.png")
 
 
+def q1_2():
+    configs = [
+        ("RND", "hw5_expl_q1_env2_rnd_PointmassMedium"),
+        ("RND L1", "hw5_expl_q1_alg_med_PointmassMedium"),
+    ]
+
+    rows, cols = 1, 1
+    fig, ax = plt.subplots(rows, cols, figsize=(10 * cols, 8 * rows))
+
+    for config_name, config_prefix in configs:
+        steps, eval_returns = get_eval_averagereturns(config_prefix)
+
+        ax.plot(steps, eval_returns, label=config_name)
+
+    ax.set_xlabel("Train iterations")
+    ax.set_ylabel("Eval average return")
+    ax.legend()
+
+    fig.suptitle("Comparison of RND and RND L1 exploration on PointmassMedium environment")
+    fig.tight_layout()
+    fig.savefig("report_resources/q1_2.png")
+
+
 if __name__ == "__main__":
-    q1_1()
+    q1_2()
