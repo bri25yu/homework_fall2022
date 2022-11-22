@@ -156,7 +156,7 @@ class MLPPolicyAWAC(MLPPolicy):
                  lambda_awac=10,
                  **kwargs,
                  ):
-        self.lambda_awac = lambda_awac
+        self.lambda_awac_inv = 1 / lambda_awac
         super().__init__(ac_dim, ob_dim, n_layers, size, discrete, learning_rate, training, nn_baseline, **kwargs)
     
     def update(self, observations, actions, advantages=None):
@@ -178,6 +178,6 @@ class MLPPolicyAWAC(MLPPolicy):
         log_probs = action_dist.log_prob(actions).reshape(-1, 1)
 
         assert log_probs.size() == advantages.size() == (batch_size, 1), (log_probs.size(), advantages.size())
-        actor_loss = (log_probs * ((1 / self.lambda_awac) * advantages).exp()).mean()
+        actor_loss = (-log_probs * ((self.lambda_awac_inv * advantages).exp())).mean()
 
         return actor_loss.item()

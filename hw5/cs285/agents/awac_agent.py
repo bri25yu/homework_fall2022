@@ -71,7 +71,7 @@ class AWACAgent(DQNAgent):
 
         dist = self.awac_actor(ob_no)
 
-        v_pi = (dist.logits * qa_vals).sum(dim=1, keepdim=True)  # (batch_size, 1)
+        v_pi = (dist.probs * qa_vals).sum(dim=1, keepdim=True)  # (batch_size, 1)
         q_vals = torch.gather(qa_vals, 1, ac_na.unsqueeze(1))
         assert v_pi.size() == q_vals.size() == (batch_size, 1), (v_pi.size(), q_vals.size())
 
