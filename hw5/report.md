@@ -117,3 +117,14 @@ Lower values of alpha introduce less regularization and higher values of alpha i
 The best value of alpha is 0.1.
 
 <div style="page-break-after: always;"></div>
+
+
+# Q4 Ablation of AWAC over lambda
+
+<div style="text-align: center">
+    <img src="report_resources/q4.png" width="500" height="600" />
+</div>
+
+The best value of lambda is 1.0. As lambda decreases, there's more variance in the runs but also more modeling capacity. As lambda increases, there's more stability but less learning.
+
+<div style="page-break-after: always;"></div>

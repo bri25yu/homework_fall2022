@@ -1,5 +1,10 @@
 from typing import List, Tuple
 
+from itertools import product
+
+import numpy as np
+import pandas as pd
+
 import os
 from pathlib import Path
 
@@ -215,5 +220,42 @@ def q2_3():
     fig.savefig("report_resources/q2_3.png")
 
 
+def q4():
+    envs = [("easy", "PointmassEasy-v0"), ("medium", "PointmassMedium-v0")]
+    lams = ["0.1", "1", "2", "10", "20", "50"]
+    supervision_types = ["supervised", "unsupervised"]
+    prefix_template = "hw5_expl_q4_awac_{env0}_{supervision_type}_lam{lam}_{env1}"
+
+    rows, cols = 3, len(envs)
+    fig, axs = plt.subplots(rows, cols, figsize=(10 * cols, 8 * rows))
+
+    for env_axs, (env0, env1) in zip(axs.T, envs):
+        learning_curve_axs = env_axs[:-1]
+        heatmap_ax = env_axs[-1]
+
+        df = pd.DataFrame(columns=["AWAC lambda", "Supervision type", "score"])
+        for lam, (learning_curve_ax, supervision_type) in product(lams, zip(learning_curve_axs, supervision_types)):
+            prefix = prefix_template.format(env0=env0, env1=env1, lam=lam, supervision_type=supervision_type)
+            steps, eval_returns = get_eval_averagereturns(prefix)
+
+            score = np.mean(eval_returns[int(len(eval_returns) * 0.9):])
+            df = df.append({"AWAC lambda": float(lam), "Supervision type": supervision_type, "score": score}, ignore_index=True)
+
+            learning_curve_ax.plot(steps, eval_returns, label=f"lambda={lam}")
+
+        df = df.pivot(index="AWAC lambda", columns="Supervision type", values="score")
+        sns.heatmap(df, ax=heatmap_ax)
+
+        for learning_curve_ax, supervision_type in zip(learning_curve_axs, supervision_types):
+            learning_curve_ax.set_title(f"{env1} environment, {supervision_type}")
+            learning_curve_ax.set_xlabel("Train iterations")
+            learning_curve_ax.set_ylabel("Eval Average Return")
+            learning_curve_ax.legend()
+
+    fig.suptitle("Ablation of AWAC over lambda")
+    fig.tight_layout()
+    fig.savefig("report_resources/q4.png")
+
+
 if __name__ == "__main__":
-    q2_3()
+    q4()

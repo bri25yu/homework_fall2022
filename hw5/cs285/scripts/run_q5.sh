@@ -1,6 +1,6 @@
 #!/bin/bash
 
-awac_lambda=
+awac_lambda=0.1
 iql_expectiles=(0.5 0.6 0.7 0.8 0.9 0.95 0.99)
 
 for iql_expectile in ${iql_expectiles[*]}
