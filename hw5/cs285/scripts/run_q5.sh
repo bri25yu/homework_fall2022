@@ -22,14 +22,14 @@ do
 
     # Medium, supervised
     python cs285/scripts/run_hw5_iql.py --env_name PointmassMedium-v0 \
-    --exp_name q5_iql_medium_supervised_lam"$awac_lambda"_tau"$iql_expectile" --use_rnd \
+    --exp_name q5_medium_supervised_lam"$awac_lambda"_tau"$iql_expectile" --use_rnd \
     --num_exploration_steps=20000 \
     --awac_lambda="$awac_lambda" \
     --iql_expectile="$iql_expectile"
 
     # Medium, unsupervised
     python cs285/scripts/run_hw5_iql.py --env_name PointmassMedium-v0 \
-    --exp_name q5_iql_medium_unsupervised_lam"$awac_lambda"_tau"$iql_expectile" --use_rnd \
+    --exp_name q5_medium_unsupervised_lam"$awac_lambda"_tau"$iql_expectile" --use_rnd \
     --unsupervised_exploration \
     --num_exploration_steps=20000 \
     --awac_lambda="$awac_lambda" \
