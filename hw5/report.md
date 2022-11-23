@@ -1,27 +1,8 @@
 # Q1.1 RND vs Epsilon-greedy exploration
 
-State densities for PointmassEasy environment with Epsilon-greedy
 <div style="text-align: center">
-    <img src="run_logs/hw5_expl_q1_env1_random_PointmassEasy-v0_21-11-2022_05-59-34/curr_state_density.png" width="250" height="200" />
-</div>
-
-State densities for PointmassEasy environment with RND
-<div style="text-align: center">
-    <img src="run_logs/hw5_expl_q1_env1_rnd_PointmassEasy-v0_21-11-2022_05-31-11/curr_state_density.png" width="250" height="200" />
-</div>
-
-State densities for PointmassMedium environment with Epsilon-greedy
-<div style="text-align: center">
-    <img src="run_logs/hw5_expl_q1_env2_random_PointmassMedium-v0_21-11-2022_06-41-44/curr_state_density.png" width="250" height="200" />
-</div>
-
-State densities for PointmassMedium environment with RND
-<div style="text-align: center">
-    <img src="run_logs/hw5_expl_q1_env2_rnd_PointmassMedium-v0_21-11-2022_06-25-23/curr_state_density.png" width="250" height="200" />
-</div>
-
-<div style="text-align: center">
-    <img src="report_resources/q1_1.png" width="250" height="200" />
+    <img src="report_resources/q1_1_PointmassEasy.png" width="750" height="200" />
+    <img src="report_resources/q1_1_PointmassMedium.png" width="750" height="200" />
 </div>
 
 The state densities for epsilon-greedy and RND for the easy environment are roughly the same. Both are able to explore the easy environment proficiently. The learning curve for RND learns and converges much earlier and faster than that of epsilon-greedy, signaling that even in the easy environment RND poses an advantage over epsilon-greedy. RND also converges to the optimal solution before exploration has even finished, signaling that it did a very good job of exploring towards the end goal. Contrast this with epsilon-greedy, where the return only starts improving until around 5000 steps after exploration has finished. 
@@ -35,28 +16,8 @@ This is also reflected in the fact that RND is much more stable than epsilon-gre
 
 # Q1.2 RND vs RND L1 exploration
 
-State densities for PointmassMedium environment with RND
 <div style="text-align: center">
-    <img src="run_logs/hw5_expl_q1_env2_rnd_PointmassMedium-v0_21-11-2022_06-25-23/curr_state_density.png" width="250" height="200" />
-</div>
-
-State densities for PointmassMedium environment with RND L1
-<div style="text-align: center">
-    <img src="run_logs/hw5_expl_q1_alg_med_PointmassMedium-v0_21-11-2022_07-05-49/curr_state_density.png" width="250" height="200" />
-</div>
-
-Last exploration trajectory for PointmassMedium environment with RND
-<div style="text-align: center">
-    <img src="run_logs/hw5_expl_q1_env2_rnd_PointmassMedium-v0_21-11-2022_06-25-23/expl_last_traj.png" width="250" height="200" />
-</div>
-
-Last exploration trajectory for PointmassMedium environment with RND L1
-<div style="text-align: center">
-    <img src="run_logs/hw5_expl_q1_alg_med_PointmassMedium-v0_21-11-2022_07-05-49/expl_last_traj.png" width="250" height="200" />
-</div>
-
-<div style="text-align: center">
-    <img src="report_resources/q1_2.png" width="250" height="200" />
+    <img src="report_resources/q1_2_PointmassMedium.png" width="750" height="400" />
 </div>
 
 We modify the RND algorithm slightly. Instead of penalizing model prediction error by the square of the difference, we only penalize with the absolute value of the difference. The overall penalty is less.
@@ -67,13 +28,9 @@ This is a disadvantage earlier in each trajectory, where we observe the model ge
 
 This is further demonstrated on the PointmassHard environment, where the L1 RND does an incredibly proficient job at optimizing the trajectory, shown below. 
 
-State densities for PointmassHard environment with RND L1
+State densities and last exploration trajectory for PointmassHard environment with RND L1
 <div style="text-align: center">
     <img src="run_logs/hw5_expl_q1_alg_hard_PointmassHard-v0_21-11-2022_07-19-14/curr_state_density.png" width="250" height="200" />
-</div>
-
-Last exploration trajectory for PointmassHard environment with RND L1
-<div style="text-align: center">
     <img src="run_logs/hw5_expl_q1_alg_hard_PointmassHard-v0_21-11-2022_07-19-14/expl_last_traj.png" width="250" height="200" />
 </div>
 
@@ -122,7 +79,8 @@ The best value of alpha is 0.1.
 # Q4 Ablation of AWAC over lambda
 
 <div style="text-align: center">
-    <img src="report_resources/q4.png" width="500" height="600" />
+    <img src="report_resources/q4_easy.png" width="500" height="400" />
+    <img src="report_resources/q4_medium.png" width="500" height="400" />
 </div>
 
 The best value of lambda is 1.0. As lambda decreases, there's more variance in the runs but also more modeling capacity. As lambda increases, there's more stability but less learning.

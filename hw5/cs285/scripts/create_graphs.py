@@ -1,134 +1,128 @@
 from typing import List, Tuple
 
-from itertools import product
+from glob import glob
+from os.path import join
+from pathlib import Path
+
+from collections import defaultdict
 
 import numpy as np
-import pandas as pd
-
-import os
-from pathlib import Path
+from pandas import DataFrame
+import matplotlib.pyplot as plt
 
 import tensorflow as tf
 tf.get_logger().setLevel("ERROR")
 
 from tensorflow.python.summary.summary_iterator import summary_iterator
 
-import numpy as np
-import matplotlib.pyplot as plt
-import pandas as pd
-import seaborn as sns
+run_logs_dir = join(*Path(__file__).parts[:-3], "run_logs")
+get_path_from_prefix = lambda p: glob(f"{p}*")[0]
+tf_eventfile_prefix = "events.out.tfevents"
 
 
-run_logs_dir = os.path.join(*Path(__file__).parts[:-3], "run_logs")
+def get_logs(experiment_prefix: str) -> DataFrame:
+    eventfile_dir = get_path_from_prefix(join(run_logs_dir, experiment_prefix))
+    eventfile_path = get_path_from_prefix(join(eventfile_dir, tf_eventfile_prefix))
 
-def load_eventfile_by_folder_prefix(prefix: str) -> List:
-    # Find the appropriate full file name
-    is_prefix = lambda s: s.startswith(prefix)
-    # We take the first element by default
-    full_folder_name = list(filter(is_prefix, os.listdir(run_logs_dir)))[0]
+    data = defaultdict(dict)
+    for event in summary_iterator(eventfile_path):
+        for v in event.summary.value:
+            if not v.simple_value:
+                continue
+            data[event.step][v.tag] = v.simple_value
 
-    # Get the full path of the eventfile directory
-    eventfile_dir = os.path.join(run_logs_dir, full_folder_name)
-
-    # Get the eventfile_path
-    tf_eventfile_prefix = "events.out.tfevents"
-    eventfile_name = [p for p in os.listdir(eventfile_dir) if p.startswith(tf_eventfile_prefix)][0]
-    eventfile_path = os.path.join(eventfile_dir, eventfile_name)
-
-    return list(summary_iterator(eventfile_path))
+    return DataFrame(data=data.values(), index=data.keys())
 
 
-def filter_summaries_by_tag(summaries: List, tag: str) -> List[Tuple]:
-    """
-    Filters summaries for all events 
-    """
-    value_is_tag = lambda v: v.tag == tag
-    get_value_tag_from_event = lambda e: next(filter(value_is_tag, e.summary.value), None)
-
-    filtered = []
-    for event in summaries:
-        value = get_value_tag_from_event(event)
-        if value is None:
-            continue
-
-        filtered.append((event, value))
-
-    return filtered
-
-
-def get_property_and_steps(experiment_prefix: str, property_name: str) -> Tuple[List[float], List[float]]:
-    """
-    Returns a tuple of steps and property values.
-
-    The arrays are sorted ascending in steps.
-    """
-    experiment_summary = load_eventfile_by_folder_prefix(experiment_prefix)
-
-    train_returns = filter_summaries_by_tag(experiment_summary, property_name)
-    steps = [r[0].step for r in train_returns]
-    returns = [r[1].simple_value for r in train_returns]
-
-    steps = np.array(steps)
-    returns = np.array(returns)
-
-    sorted_idxs = steps.argsort()
-
-    steps = steps[sorted_idxs]
-    returns = returns[sorted_idxs]
-
-    return steps, returns
-
-
-def get_eval_averagereturns(experiment_prefix: str) -> Tuple[List[float], List[float]]:
-    return get_property_and_steps(experiment_prefix, "Eval_AverageReturn")
+def get_logs_with_return(experiment_prefix: str):
+    logs = get_logs(experiment_prefix)
+    return logs[logs["Eval_AverageReturn"].notna() & logs["Train_AverageReturn"].notna()]
 
 
 def q1_1():
-    configs = [
-        ("Episilon-greedy on PointmassEasy", "hw5_expl_q1_env1_random_PointmassEasy"),
-        ("RND on PointmassEasy", "hw5_expl_q1_env1_rnd_PointmassEasy"),
-        ("Episilon-greedy on PointmassMedium", "hw5_expl_q1_env2_random_PointmassMedium"),
-        ("RND on PointmassMedium", "hw5_expl_q1_env2_rnd_PointmassMedium"),
+    envs = [
+        {"env_value": "env1", "env_name": "PointmassEasy"},
+        {"env_value": "env2", "env_name": "PointmassMedium"},
     ]
+    strategies = [
+        {"strategy_name": "Episilon-greedy", "strategy_value": "random"},
+        {"strategy_name": "RND", "strategy_value": "rnd"},
+    ]
+    prefix_template = "hw5_expl_q1_{env_value}_{strategy_value}_{env_name}"
 
-    rows, cols = 1, 1
-    fig, ax = plt.subplots(rows, cols, figsize=(10 * cols, 8 * rows))
+    for env in envs:
+        rows, cols = 1, 3
+        fig, axs = plt.subplots(rows, cols, figsize=(10 * cols, 8 * rows))
+        learning_curve_ax = axs[2]
 
-    for config_name, config_prefix in configs:
-        steps, eval_returns = get_eval_averagereturns(config_prefix)
+        for state_density_ax, strategy in zip(axs, strategies):
+            strategy_name = strategy.pop("strategy_name")
+            config_prefix = prefix_template.format(**env, **strategy)
+            strategy["strategy_name"] = strategy_name
 
-        ax.plot(steps, eval_returns, label=config_name)
+            eventfile_dir = get_path_from_prefix(join(run_logs_dir, config_prefix))
+            state_density_path = get_path_from_prefix(join(eventfile_dir, "curr_state_density"))
+            state_density_ax.imshow(plt.imread(state_density_path))
+            state_density_ax.set_title(strategy_name)
+            state_density_ax.set_axis_off()
 
-    ax.set_xlabel("Train iterations")
-    ax.set_ylabel("Eval average return")
-    ax.legend()
+            logs = get_logs_with_return(config_prefix)
+            logs.plot(y="Eval_AverageReturn", ax=learning_curve_ax, label=strategy_name)
 
-    fig.suptitle("Comparison of Epsilon-greedy and RND exploration on various environments")
-    fig.tight_layout()
-    fig.savefig("report_resources/q1_1.png")
+        learning_curve_ax.set_title("Learning curves")
+        learning_curve_ax.set_xlabel("Train iterations")
+        learning_curve_ax.set_ylabel("Eval average return")
+
+        fig.suptitle(f"Comparison of Epsilon-greedy and RND exploration on {env['env_name']}")
+        fig.tight_layout()
+        fig.savefig(f"report_resources/q1_1_{env['env_name']}.png")
 
 
 def q1_2():
-    configs = [
-        ("RND", "hw5_expl_q1_env2_rnd_PointmassMedium"),
-        ("RND L1", "hw5_expl_q1_alg_med_PointmassMedium"),
+    envs = [
+        {"env_name": "PointmassMedium"},
     ]
+    strategies = [
+        {"strategy_name": "RND", "config_value": "env2_rnd"},
+        {"strategy_name": "RND L1", "config_value": "alg_med"},
+    ]
+    prefix_template = "hw5_expl_q1_{config_value}_{env_name}"
 
-    rows, cols = 1, 1
-    fig, ax = plt.subplots(rows, cols, figsize=(10 * cols, 8 * rows))
+    for env in envs:
+        rows, cols = 2, 3
+        fig, axs = plt.subplots(rows, cols, figsize=(10 * cols, 8 * rows))
+        learning_curve_ax = axs[0, 2]
+        fig.delaxes(axs[1][2])
 
-    for config_name, config_prefix in configs:
-        steps, eval_returns = get_eval_averagereturns(config_prefix)
+        for strategy_axs, strategy in zip(axs.T, strategies):
+            strategy_name = strategy.pop("strategy_name")
+            config_prefix = prefix_template.format(**env, **strategy)
+            strategy["strategy_name"] = strategy_name
 
-        ax.plot(steps, eval_returns, label=config_name)
+            state_density_ax, eval_trajectory_ax = strategy_axs[:2]
 
-    ax.set_xlabel("Train iterations")
-    ax.set_ylabel("Eval average return")
-    ax.legend()
+            eventfile_dir = get_path_from_prefix(join(run_logs_dir, config_prefix))
 
-    fig.suptitle("Comparison of RND and RND L1 exploration on PointmassMedium environment")
-    fig.tight_layout()
-    fig.savefig("report_resources/q1_2.png")
+            state_density_path = get_path_from_prefix(join(eventfile_dir, "curr_state_density"))
+            state_density_ax.imshow(plt.imread(state_density_path))
+            state_density_ax.set_title(f"State densities for {strategy_name}")
+            state_density_ax.set_axis_off()
+
+            eval_trajectory_path = get_path_from_prefix(join(eventfile_dir, "expl_last_traj"))
+            eval_trajectory_ax.imshow(plt.imread(eval_trajectory_path))
+            eval_trajectory_ax.set_axis_off()
+            eval_trajectory_ax.set_title(f"Last exploration trajectory for {strategy_name}")
+
+            logs = get_logs_with_return(config_prefix)
+            logs.plot(y="Eval_AverageReturn", ax=learning_curve_ax, label=strategy_name)
+
+        learning_curve_ax.set_title("Learning curves")
+        learning_curve_ax.set_xlabel("Train iterations")
+        learning_curve_ax.set_ylabel("Eval average return")
+
+        fig.suptitle(f"Comparison of RND and RND L1 exploration on {env['env_name']}")
+        fig.tight_layout()
+        fig.savefig(f"report_resources/q1_2_{env['env_name']}.png")
 
 
 def q2_1():
@@ -223,39 +217,41 @@ def q2_3():
 def q4():
     envs = [("easy", "PointmassEasy-v0"), ("medium", "PointmassMedium-v0")]
     lams = ["0.1", "1", "2", "10", "20", "50"]
-    supervision_types = ["supervised", "unsupervised"]
-    prefix_template = "hw5_expl_q4_awac_{env0}_{supervision_type}_lam{lam}_{env1}"
+    supervision_types = [("supervised", "Supervised exploration"), ("unsupervised", "Unsupervised exploration")]
+    prefix_template = "hw5_expl_q4_awac_{env_value}_{supervision_type}_lam{lam}_{env_name}"
 
-    rows, cols = 3, len(envs)
-    fig, axs = plt.subplots(rows, cols, figsize=(10 * cols, 8 * rows))
+    for env_value, env_name in envs:
+        rows, cols = 2, len(supervision_types)
+        fig, axs = plt.subplots(rows, cols, figsize=(10 * cols, 8 * rows))
+        supervision_axs = axs.T
 
-    for env_axs, (env0, env1) in zip(axs.T, envs):
-        learning_curve_axs = env_axs[:-1]
-        heatmap_ax = env_axs[-1]
+        for supervision_ax, (supervision_type, supervision_name) in zip(supervision_axs, supervision_types):
+            learning_curve_ax, lambda_ax = supervision_ax
 
-        df = pd.DataFrame(columns=["AWAC lambda", "Supervision type", "score"])
-        for lam, (learning_curve_ax, supervision_type) in product(lams, zip(learning_curve_axs, supervision_types)):
-            prefix = prefix_template.format(env0=env0, env1=env1, lam=lam, supervision_type=supervision_type)
-            steps, eval_returns = get_eval_averagereturns(prefix)
+            lambda_scores = []
+            for lam in lams:
+                prefix = prefix_template.format(env_value=env_value, env_name=env_name, lam=lam, supervision_type=supervision_type)
+                steps, eval_returns = get_eval_averagereturns(prefix)
 
-            score = np.mean(eval_returns[int(len(eval_returns) * 0.9):])
-            df = df.append({"AWAC lambda": float(lam), "Supervision type": supervision_type, "score": score}, ignore_index=True)
+                score = np.mean(eval_returns[int(len(eval_returns) * 0.9):])
+                lambda_scores.append(score)
 
-            learning_curve_ax.plot(steps, eval_returns, label=f"lambda={lam}")
+                learning_curve_ax.plot(steps, eval_returns, label=f"lambda={lam}")
 
-        df = df.pivot(index="AWAC lambda", columns="Supervision type", values="score")
-        sns.heatmap(df, ax=heatmap_ax)
+            lambda_ax.plot(lams, lambda_scores)
 
-        for learning_curve_ax, supervision_type in zip(learning_curve_axs, supervision_types):
-            learning_curve_ax.set_title(f"{env1} environment, {supervision_type}")
+            learning_curve_ax.set_title(supervision_name)
             learning_curve_ax.set_xlabel("Train iterations")
             learning_curve_ax.set_ylabel("Eval Average Return")
             learning_curve_ax.legend()
 
-    fig.suptitle("Ablation of AWAC over lambda")
-    fig.tight_layout()
-    fig.savefig("report_resources/q4.png")
+            lambda_ax.set_xlabel("Lambda")
+            lambda_ax.set_ylabel("Score")
+
+        fig.suptitle(f"Ablation of AWAC over lambda for {env_name} environment")
+        fig.tight_layout()
+        fig.savefig(f"report_resources/q4_{env_value}.png")
 
 
 if __name__ == "__main__":
-    q4()
+    q1_2()
