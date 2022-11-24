@@ -76,6 +76,20 @@ The best value of alpha is 0.1.
 <div style="page-break-after: always;"></div>
 
 
+# Q3 Comparison of CQN and DQN on supervised exploration
+
+<div style="text-align: center">
+    <img src="report_resources/q3_PointmassMedium.png" width="500" height="400" />
+    <img src="report_resources/q3_PointmassHard.png" width="500" height="400" />
+</div>
+
+The scaled and shifted versions of these two algorithms did better on supervised exploration. This is because the supervision uses a combination of mixed rewards, so having rewards on similar scales actually allows comparison and usage of both. 
+
+The supervised version of DQN and CQL outperformed their unsupervised counterparts, both in stability of improvement and in performance. This is probably because the mixture of rewards acts as a prior on which states would be more efficient to continue exploring in. 
+
+
+<div style="page-break-after: always;"></div>
+
 # Q4 Ablation of AWAC over lambda
 
 <div style="text-align: center">
@@ -84,5 +98,28 @@ The best value of alpha is 0.1.
 </div>
 
 The best value of lambda is 1.0. As lambda decreases, there's more variance in the runs but also more modeling capacity. As lambda increases, there's more stability but less learning.
+
+<div style="page-break-after: always;"></div>
+
+
+# Q5 Ablation of IQL over tau
+
+<div style="text-align: center">
+    <img src="report_resources/q5_PointmassEasy.png" width="500" height="400" />
+    <img src="report_resources/q5_PointmassMedium.png" width="500" height="400" />
+</div>
+
+$$
+\begin{align*}
+\mathcal{L}_{V}(\phi) &= \mathbb{E}_{(s, a) ~ D} \left[ L_2^\tau(Q_\theta(s, a) - V_\phi(s) \right] \\
+L_2^\tau(\mu) &= |\tau - \mathbb{1}\{\mu \leq 0\}|\mu^2
+\end{align*}
+$$
+
+For the q-values of actions that **are not** better than the current value estimation of a state i.e. $Q_\theta(s, a) < V_\phi(s)$, as $\tau$ increases the penalty decreases. 
+
+For the q-values of actions that **are** better than the current value estimation of a state i.e. $Q_\theta(s, a) >= V_\phi(s)$, as $\tau$ increases the penalty increases. 
+
+Thus, $\tau$ controls how much the exploration model pays attention to q-values that are better or worse than expected. Typically, higher values of $\tau$ such as 0.9+ are better, signaling that it's more important that a model pays a lot of attention to q-values that are better than expected and pay less attention to q-values that are worse than expected.
 
 <div style="page-break-after: always;"></div>

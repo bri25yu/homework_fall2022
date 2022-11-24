@@ -214,6 +214,32 @@ def q2_3():
     fig.savefig("report_resources/q2_3.png")
 
 
+def q3():
+    envs = [
+        {"env_name": "PointmassMedium", "env_value": "medium"},
+        {"env_name": "PointmassHard", "env_value": "hard"},
+    ]
+    configs = ["dqn", "cql", "dqn_scaled", "cql_scaled"]
+    prefix_template = "hw5_expl_q3_{env_value}_{config}_{env_name}"
+
+    for env in envs:
+        rows, cols = 1, 1
+        fig, ax = plt.subplots(rows, cols, figsize=(10 * cols, 8 * rows))
+
+        for config in configs:
+            config_prefix = prefix_template.format(**env, **{"config": config})
+
+            logs = get_logs_with_return(config_prefix)
+            logs.plot(y="Eval_AverageReturn", ax=ax, label=config)
+
+        ax.set_xlabel("Train iterations")
+        ax.set_ylabel("Eval average return")
+
+        fig.suptitle(f"Learning curves for DQN vs CQL supervised exploration on {env['env_name']} environment")
+        fig.tight_layout()
+        fig.savefig(f"report_resources/q3_{env['env_name']}.png")
+
+
 def q4():
     envs = [("easy", "PointmassEasy-v0"), ("medium", "PointmassMedium-v0")]
     lams = ["0.1", "1", "2", "10", "20", "50"]
@@ -253,5 +279,47 @@ def q4():
         fig.savefig(f"report_resources/q4_{env_value}.png")
 
 
+def q5():
+    envs = [
+        {"env_name": "PointmassEasy", "env_value": "easy"},
+        {"env_name": "PointmassMedium", "env_value": "medium"},
+    ]
+    supervision_types = [
+        {"supervision_type": "supervised"},
+        {"supervision_type": "unsupervised"},
+    ]
+    taus = [0.5, 0.6, 0.7, 0.8, 0.9, 0.95, 0.99]
+    prefix_template = "hw5_expl_q5_{env_value}_{supervision_type}_lam1.0_tau{tau}_{env_name}"
+
+    for env in envs:
+        rows, cols = 2, 2
+        fig, axs = plt.subplots(rows, cols, figsize=(10 * cols, 8 * rows))
+
+        for supervision_axs, supervision_type in zip(axs.T, supervision_types):
+            learning_curve_ax, tau_ax = supervision_axs
+
+            tau_scores = []
+            for tau in taus:
+                config_prefix = prefix_template.format(**env, **supervision_type, **{"tau": tau})
+
+                logs = get_logs_with_return(config_prefix)
+                logs.plot(y="Eval_AverageReturn", ax=learning_curve_ax, label=f"tau={tau}")
+
+                tau_scores.append(logs["Eval_AverageReturn"][int(len(logs) * 0.9):].mean())
+
+            tau_ax.plot(taus, tau_scores)
+            tau_ax.set_title(f"Ablation over Tau for {supervision_type['supervision_type']} exploration")
+            tau_ax.set_xlabel("Tau")
+            tau_ax.set_ylabel("Score")
+
+            learning_curve_ax.set_title(f"Learning curves for {supervision_type['supervision_type']} exploration")
+            learning_curve_ax.set_xlabel("Train iterations")
+            learning_curve_ax.set_ylabel("Eval average return")
+
+        fig.suptitle(f"Ablation of IQL over tau on {env['env_name']}")
+        fig.tight_layout()
+        fig.savefig(f"report_resources/q5_{env['env_name']}.png")
+
+
 if __name__ == "__main__":
-    q1_2()
+    q3()
