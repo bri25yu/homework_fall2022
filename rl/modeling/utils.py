@@ -93,46 +93,6 @@ def calculate_q_values(rewards: Tensor, terminals: Tensor, gamma: float) -> Tens
     return q_values
 
 
-def calculate_contrastive_q_values_update(q_values: Tensor, best_q_values: Parameter, terminals: Tensor):
-    """
-    Parameters
-    ----------
-    q_values: Tensor of shape (L, 1)
-    best_q_values: Parameter of shape (max_L, 1)
-    terminals: Tensor of shape (L, 1)
-
-    Returns
-    -------
-    corresponding_best_q_values: Tensor of shape (L, 1)
-        The best q_values corresponding to each time step in q_values
-    new_best_q_values: Tensor of shape (max_L, 1)
-        The updated best q_values
-
-    """
-    L = q_values.size()[0]
-    max_L = best_q_values.size()[0]
-
-    assert_shape(q_values, (L, 1))
-    assert_shape(terminals, (L, 1))
-    assert_shape(best_q_values, (max_L, 1))
-
-    mask = ~terminals
-
-    corresponding_best_q_values = empty_like(q_values)
-    new_best_q_values = best_q_values.data.clone().detach()
-
-    corresponding_index = 0
-    for i in arange(L):
-        corresponding_best_q_values[i] = best_q_values[corresponding_index]
-        new_best_q_values[corresponding_index] = max(new_best_q_values[corresponding_index], q_values[i])
-        corresponding_index = (corresponding_index + 1) * mask[i]
-
-    assert_shape(corresponding_best_q_values, (L, 1))
-    assert_shape(new_best_q_values, (max_L, 1))
-
-    return corresponding_best_q_values, new_best_q_values
-
-
 def get_log_probs_logs(log_probs: Tensor) -> Dict[str, Tensor]:
     log_probs = -log_probs.detach()
     return {

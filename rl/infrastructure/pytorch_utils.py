@@ -1,16 +1,11 @@
-from typing import Tuple, Union
+from typing import Tuple
 
 from dataclasses import dataclass
-
-import copy
 
 from numpy import prod
 
 import torch
 import torch.nn as nn
-
-from transformers import T5Config
-from transformers.models.t5.modeling_t5 import T5Stack, T5PreTrainedModel
 
 
 __all__ = [
@@ -21,8 +16,6 @@ __all__ = [
     "build_log_std",
     "normalize",
     "FFNConfig",
-    "T5ForReinforcementLearning",
-    "build_transformer",
 ]
 
 
@@ -92,47 +85,3 @@ def build_ffn(ffn_config: FFNConfig) -> nn.Module:
 
 def build_log_std(shape: Tuple[int, ...]) -> nn.Parameter:
     return nn.Parameter(torch.zeros(shape))
-
-
-class T5ForReinforcementLearning(T5PreTrainedModel):
-    def __init__(self, config: T5Config) -> None:
-        super().__init__(config)
-
-        # This is an exact copy of `T5Model.__init__`
-        encoder_config = copy.deepcopy(config)
-        encoder_config.is_decoder = False
-        encoder_config.use_cache = False
-        encoder_config.is_encoder_decoder = False
-        self.encoder = T5Stack(encoder_config)
-
-        decoder_config = copy.deepcopy(config)
-        decoder_config.is_decoder = True
-        decoder_config.is_encoder_decoder = False
-        decoder_config.num_layers = config.num_decoder_layers
-        self.decoder = T5Stack(decoder_config)
-
-        # Initialize weights and apply final processing
-        self.post_init()
-
-    def forward(self, trajectory: torch.Tensor) -> torch.Tensor:
-        encoder_outputs = self.encoder(inputs_embeds=trajectory)
-        last_hidden_state = encoder_outputs.last_hidden_state
-
-        decoder_outputs = self.decoder(inputs_embeds=last_hidden_state)
-        return decoder_outputs.last_hidden_state
-
-
-def build_transformer(transformer_config: Union[None, T5Config]=None, model_dim: int=None) -> nn.Module:
-    assert transformer_config or model_dim, "Must provide either a config or a model dimension"
-
-    if transformer_config is None:  # Default model
-        transformer_config = T5Config(
-            d_model=model_dim,
-            d_kv=64,
-            dff=64,
-            num_layers=1,
-            num_decoder_layers=1,
-            num_heads=4,
-        )
-
-    return T5ForReinforcementLearning(transformer_config)
