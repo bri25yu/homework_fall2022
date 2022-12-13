@@ -71,7 +71,7 @@ def build_ffn(ffn_config: FFNConfig) -> nn.Module:
 
     in_dims = [flattened_in_dim] + [ffn_config.hidden_dim] * (ffn_config.n_layers + 1)
     out_dims = [ffn_config.hidden_dim] * (ffn_config.n_layers + 1) + [flattened_out_dim]
-    activations = ["GELU"] * (ffn_config.n_layers + 1) + ["Identity"]
+    activations = ["ReLU"] * (ffn_config.n_layers + 1) + ["Identity"]
 
     layers = []
     for in_dim, out_dim, activation in zip(in_dims, out_dims, activations):
