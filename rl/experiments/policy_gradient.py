@@ -16,5 +16,5 @@ class PolicyGradientCartPoleExperiment(PolicyGradientExperimentBase):
 
 
 class PolicyGradientHalfCheetahExperiment(PolicyGradientExperimentBase):
-    LEARNING_RATE = 5e-3
+    LEARNING_RATE = 1e-2
     ENV_NAME = "HalfCheetah-v4"
