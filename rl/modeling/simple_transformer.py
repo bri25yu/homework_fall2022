@@ -6,7 +6,7 @@ import torch.nn as nn
 from gym import Env
 
 from rl.infrastructure import (
-    Trajectory, ModelOutput, PolicyBase, to_numpy
+    Trajectory, ModelOutput, PolicyBase, build_ffn, FFNConfig, to_numpy
 )
 from rl.infrastructure.pytorch_utils import build_log_std
 from rl.modeling.utils import assert_shape, calculate_log_probs, calculate_q_values, get_log_probs_logs
@@ -82,20 +82,6 @@ class SimpleTransformer(nn.Module):
         return inputs
 
 
-class Baseline(nn.Module):
-    def __init__(self, config: SimpleTransformerConfig) -> None:
-        super().__init__()
-        self.config = config
-
-        self.layernorm = ReducedLayerNorm(config.in_dim)
-        self.dense = Dense(config.in_dim, config.hidden_dim, 1)
-
-    def forward(self, inputs: torch.Tensor) -> torch.Tensor:
-        inputs = self.layernorm(inputs)
-        inputs = self.dense(inputs)
-        return inputs
-
-
 class SimpleTransformerModel(PolicyBase):
     def __init__(self, env: Env, gamma: float) -> None:
         super().__init__(env)
@@ -115,7 +101,10 @@ class SimpleTransformerModel(PolicyBase):
         )
         self.mean_net = SimpleTransformer(config)
 
-        self.baseline = Baseline(config)
+        self.baseline = build_ffn(FFNConfig(
+            in_shape=env.observation_space.shape,
+            out_shape=(1,),
+        ))
         self.baseline_loss_fn = torch.nn.HuberLoss()
 
     def forward(self, trajectories: Trajectory) -> ModelOutput:

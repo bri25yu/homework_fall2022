@@ -12,13 +12,28 @@ from rl.infrastructure.pytorch_utils import build_log_std
 from rl.modeling.utils import assert_shape, calculate_log_probs, calculate_q_values, get_log_probs_logs
 
 from rl.modeling.simple_transformer import (
+    Dense,
+    ReducedLayerNorm,
     SimpleTransformerConfig,
     SimpleTransformer,
-    Baseline,
 )
 
 
 __all__ = ["MinEnsembleBaselineModel"]
+
+
+class Baseline(nn.Module):
+    def __init__(self, config: SimpleTransformerConfig) -> None:
+        super().__init__()
+        self.config = config
+
+        self.layernorm = ReducedLayerNorm(config.in_dim)
+        self.dense = Dense(config.in_dim, config.hidden_dim, 1)
+
+    def forward(self, inputs: torch.Tensor) -> torch.Tensor:
+        inputs = self.layernorm(inputs)
+        inputs = self.dense(inputs)
+        return inputs
 
 
 class MinEnsembleBaselineModel(PolicyBase):
