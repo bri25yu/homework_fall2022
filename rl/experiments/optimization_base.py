@@ -15,7 +15,7 @@ class OptimizationExperimentBase(OffPolicyWithOptimizerParamsTrainingPipelineBas
     LEARNING_RATE = 1e-2
 
     def get_env(self) -> Env:
-        return make("HalfCheetah-v4")
+        return make("CartPole-v1")
 
     def get_policy(self, env: Env) -> PolicyBase:
         return MinEnsembleBaselineModel(env=env, gamma=0.99)
