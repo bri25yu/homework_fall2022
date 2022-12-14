@@ -20,11 +20,6 @@ class MinEnsembleBaselineCartPoleExperiment(MinEnsembleBaselineExperimentBase):
     ENV_NAME = "CartPole-v1"
 
 
-class MinEnsembleBaselineLunarLanderExperiment(MinEnsembleBaselineExperimentBase):
-    LEARNING_RATE = 1e-2
-    ENV_NAME = "LunarLander-v2"
-
-
 class MinEnsembleBaselineHalfCheetahExperiment(MinEnsembleBaselineExperimentBase):
     LEARNING_RATE = 1e-2
     ENV_NAME = "HalfCheetah-v4"

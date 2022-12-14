@@ -20,11 +20,6 @@ class PolicyGradientCartPoleExperiment(PolicyGradientExperimentBase):
     ENV_NAME = "CartPole-v1"
 
 
-class PolicyGradientLunarLanderExperiment(PolicyGradientExperimentBase):
-    LEARNING_RATE = 5e-3
-    ENV_NAME = "LunarLander-v2"
-
-
 class PolicyGradientHalfCheetahExperiment(PolicyGradientExperimentBase):
     LEARNING_RATE = 5e-3
     ENV_NAME = "HalfCheetah-v4"
