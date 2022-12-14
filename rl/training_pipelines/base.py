@@ -86,7 +86,7 @@ class TrainingPipelineBase(ABC):
     def benchmark(self) -> None:
         seeds, log_dirs = self.setup_benchmarking()
 
-        for seed, log_dir in tqdm(zip(seeds, log_dirs), desc="Benchmarking", total=len(seeds)):
+        for seed, log_dir in tqdm(zip(seeds, log_dirs), desc=f"Benchmarking {self.experiment_name}", total=len(seeds)):
             self.logger = None
             self.setup_logging(log_dir)
 

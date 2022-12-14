@@ -42,7 +42,7 @@ def get_summary(experiment_dir: str) -> Tuple[List[float], Dict[str, List[float]
 
 def get_eval_returns(log_dir: str) -> Tuple[List[float], List[float]]:
     steps, summary = get_summary(log_dir)
-    return steps, summary("return_eval")
+    return steps, summary["return_eval"]
 
 
 @dataclass
