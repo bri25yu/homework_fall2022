@@ -6,13 +6,13 @@ import torch.nn as nn
 from gym import Env
 
 from rl.infrastructure import (
-    Trajectory, ModelOutput, PolicyBase, build_ffn, FFNConfig, to_numpy, normalize
+    Trajectory, ModelOutput, PolicyBase, to_numpy
 )
 from rl.infrastructure.pytorch_utils import build_log_std
 from rl.modeling.utils import assert_shape, calculate_log_probs, calculate_q_values, get_log_probs_logs
 
 
-__all__ = ["TestModel"]
+__all__ = ["SimpleTransformerModel"]
 
 
 class ReducedLayerNorm(nn.Module):
@@ -96,7 +96,7 @@ class Baseline(nn.Module):
         return inputs
 
 
-class TestModel(PolicyBase):
+class SimpleTransformerModel(PolicyBase):
     def __init__(self, env: Env, gamma: float) -> None:
         super().__init__(env)
 
@@ -115,8 +115,7 @@ class TestModel(PolicyBase):
         )
         self.mean_net = SimpleTransformer(config)
 
-        num_baselines = 3
-        self.baselines = nn.ModuleList([Baseline(config) for _ in range(num_baselines)])
+        self.baseline = Baseline(config)
         self.baseline_loss_fn = torch.nn.HuberLoss()
 
     def forward(self, trajectories: Trajectory) -> ModelOutput:
@@ -131,8 +130,7 @@ class TestModel(PolicyBase):
 
         q_vals = calculate_q_values(trajectories.rewards, trajectories.terminals, self.gamma)
 
-        baseline_values = torch.cat([b(trajectories.observations) for b in self.baselines], dim=1)
-        values = baseline_values.min(dim=1, keepdim=True)[0]
+        values = self.baseline(trajectories.observations)
         advantages = q_vals - values
 
         L = trajectories.L
