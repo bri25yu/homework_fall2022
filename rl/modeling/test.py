@@ -96,7 +96,7 @@ class TestModel(PolicyBase):
             self.log_std = build_log_std(env.action_space.shape)
 
         config = SimpleTransformerConfig(
-            in_dim=env.observation_space.shape,
+            in_dim=env.observation_space.shape[0],
             out_dim=out_dim,
         )
         self.mean_net = SimpleTransformer(config)

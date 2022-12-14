@@ -76,6 +76,7 @@ class TrainingPipelineBase(ABC):
 
             logs = {**train_logs, **eval_logs, **(model_output.logs if model_output.logs else {})}
             self.log_to_tensorboard(logs, step)
+            self.log_weights_to_tensorboard(policy, step)
 
         # Perform one final eval if the last step wasn't an eval step
         if step % eval_steps != 0:
@@ -195,5 +196,11 @@ class TrainingPipelineBase(ABC):
                 self.logger.add_scalar(key, value, step)
 
         self.reset_timers()
+
+        self.logger.flush()
+
+    def log_weights_to_tensorboard(self, policy: PolicyBase, step: int) -> None:
+        for name, param in policy.named_parameters():
+            self.logger.add_histogram(name, param, step)
 
         self.logger.flush()
