@@ -10,11 +10,6 @@ class MinEnsembleBaselineExperimentBase(ExperimentBase):
         return MinEnsembleBaselineModel(env=env, gamma=0.99)
 
 
-class MinEnsembleBaselineInvertedPendulumExperiment(MinEnsembleBaselineExperimentBase):
-    LEARNING_RATE = 1e-2
-    ENV_NAME = "InvertedPendulum-v4"
-
-
 class MinEnsembleBaselineCartPoleExperiment(MinEnsembleBaselineExperimentBase):
     LEARNING_RATE = 1e-2
     ENV_NAME = "CartPole-v1"

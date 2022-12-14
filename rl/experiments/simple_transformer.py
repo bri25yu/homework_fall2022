@@ -10,11 +10,6 @@ class SimpleTransformerExperimentBase(ExperimentBase):
         return SimpleTransformerModel(env=env, gamma=0.99)
 
 
-class SimpleTransformerInvertedPendulumExperiment(SimpleTransformerExperimentBase):
-    LEARNING_RATE = 1e-2
-    ENV_NAME = "InvertedPendulum-v4"
-
-
 class SimpleTransformerCartPoleExperiment(SimpleTransformerExperimentBase):
     LEARNING_RATE = 1e-2
     ENV_NAME = "CartPole-v1"
