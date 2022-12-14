@@ -17,12 +17,4 @@ class WeightDecayConfig1Experiment(WeightDecayExperimentBase):
 
 
 class WeightDecayConfig2Experiment(WeightDecayExperimentBase):
-    WEIGHT_DECAY = 1e-3  # 0.1%
-
-
-class WeightDecayConfig3Experiment(WeightDecayExperimentBase):
-    WEIGHT_DECAY = 2e-2  # 2%
-
-
-class WeightDecayConfig4Experiment(WeightDecayExperimentBase):
     WEIGHT_DECAY = 5e-2  # 5%
