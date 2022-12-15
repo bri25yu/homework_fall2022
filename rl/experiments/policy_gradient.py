@@ -11,10 +11,13 @@ class PolicyGradientExperimentBase(ExperimentBase):
 
 
 class PolicyGradientCartPoleExperiment(PolicyGradientExperimentBase):
+    TRAIN_STEPS = 100
     LEARNING_RATE = 5e-3
     ENV_NAME = "CartPole-v1"
 
 
 class PolicyGradientHalfCheetahExperiment(PolicyGradientExperimentBase):
+    TRAIN_STEPS = 1000
+    SEEDS = [42]
     LEARNING_RATE = 1e-2
     ENV_NAME = "HalfCheetah-v4"

@@ -28,6 +28,8 @@ class TrainingPipelineBase(ABC):
 
     EVAL_BATCH_SIZE = 2  # Number of trajectories worth of steps
 
+    SEEDS = [41, 42, 43]  # Averaging over 3 seeds for benchmarking is good enough
+
     @abstractmethod
     def perform_single_train_step(self, env: Env, policy: PolicyBase) -> Tuple[ModelOutput, Dict[str, Any]]:
         """
@@ -100,7 +102,7 @@ class TrainingPipelineBase(ABC):
         """
         Returns the seeds and log_dirs for benchmarking.
         """
-        seeds = [41, 42, 43]  # Averaging over 3 seeds is good enough
+        seeds = self.SEEDS
         seed_to_log_dir = lambda s: os.path.join(self.experiment_results_dir, str(s))
         log_dirs = list(map(seed_to_log_dir, seeds))
 

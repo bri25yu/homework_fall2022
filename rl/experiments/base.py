@@ -9,7 +9,6 @@ __all__ = ["ExperimentBase"]
 
 
 class ExperimentBase(OffPolicyTrainingPipelineBase):
-    TRAIN_STEPS = 100
     EVAL_STEPS = 1
     TRAIN_BATCH_SIZE = 1
     ENV_NAME: Union[None, str] = None
