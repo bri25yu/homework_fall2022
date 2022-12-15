@@ -10,7 +10,9 @@ class EMABetaExperimentBase(OptimizationExperimentBase):
     def __init__(self) -> None:
         super().__init__()
 
-        self.OPTIMIZER_KWARGS["betas"] = (self.BETA_1, self.BETA_2)
+        self.OPTIMIZER_KWARGS = {
+            "betas": (self.BETA_1, self.BETA_2),
+        }
 
 
 class EMABetaConfig1Experiment(EMABetaExperimentBase):

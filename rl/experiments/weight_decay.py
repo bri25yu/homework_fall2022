@@ -9,7 +9,9 @@ class WeightDecayExperimentBase(OptimizationExperimentBase):
     def __init__(self) -> None:
         super().__init__()
 
-        self.OPTIMIZER_KWARGS["weight_decay"] = self.WEIGHT_DECAY
+        self.OPTIMIZER_KWARGS = {
+            "weight_decay": self.WEIGHT_DECAY,
+        }
 
 
 class WeightDecayConfig1Experiment(WeightDecayExperimentBase):
